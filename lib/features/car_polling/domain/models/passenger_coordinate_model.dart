@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class PassengerCoordinateModel {
   String? type; // pickup or dropoff
   String? passengerId;
@@ -14,7 +16,9 @@ class PassengerCoordinateModel {
   });
 
   factory PassengerCoordinateModel.fromJson(Map<String, dynamic> json) {
-    print('=== PassengerCoordinateModel.fromJson: $json ===');
+    if (kDebugMode) {
+      print('=== PassengerCoordinateModel.fromJson: $json ===');
+    }
 
     final model = PassengerCoordinateModel(
       type: json['type'],
@@ -28,8 +32,10 @@ class PassengerCoordinateModel {
       address: json['address'],
     );
 
-    print(
-        '=== Created model: type=${model.type}, coords=${model.coordinates} ===');
+    if (kDebugMode) {
+      print(
+          '=== Created model: type=${model.type}, coords=${model.coordinates} ===');
+    }
     return model;
   }
 

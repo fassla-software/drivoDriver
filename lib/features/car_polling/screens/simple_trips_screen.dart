@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../util/dimensions.dart';
@@ -28,9 +29,13 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
     // Get or create the controller
     try {
       controller = Get.find<SimpleTripsController>();
-      print('=== SimpleTripsController found: $controller ===');
+      if (kDebugMode) {
+        print('=== SimpleTripsController found: $controller ===');
+      }
     } catch (e) {
-      print('=== SimpleTripsController not found, creating new one: $e ===');
+      if (kDebugMode) {
+        print('=== SimpleTripsController not found, creating new one: $e ===');
+      }
       controller = Get.put(SimpleTripsController(
         currentTripsServiceInterface: Get.find(),
       ));
@@ -38,7 +43,9 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
 
     // Load data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('=== Loading data in postFrameCallback ===');
+      if (kDebugMode) {
+        print('=== Loading data in postFrameCallback ===');
+      }
       controller.getCurrentTrips();
     });
   }

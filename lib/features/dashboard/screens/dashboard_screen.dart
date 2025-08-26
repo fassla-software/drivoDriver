@@ -36,12 +36,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // First request location permission
       await Get.find<LocationController>().getCurrentLocation();
-      
+
       // Then check if zone ID is set
       if (Get.find<AuthController>().getZoneId() == '') {
-        Get.offAll(() => const AccessLocationScreen());
+        _showLocationAccessDialog();
       }
     });
+  }
+
+  void _showLocationAccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Location Icon
+                Container(
+                  padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.location_on,
+                    size: 50,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const SizedBox(height: Dimensions.paddingSizeLarge),
+
+                // Title
+                Text(
+                  'location_access_required'.tr,
+                  style: textBold.copyWith(
+                    fontSize: Dimensions.fontSizeLarge,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Dimensions.paddingSizeSmall),
+
+                // Description
+                Text(
+                  'location_access_description'.tr,
+                  style: textRegular.copyWith(
+                    fontSize: Dimensions.fontSizeDefault,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Dimensions.paddingSizeLarge),
+
+                // Buttons
+                Row(
+                  children: [
+                    // Continue Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close dialog
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                Dimensions.paddingSizeSmall),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: Dimensions.paddingSizeDefault),
+                        ),
+                        child: Text(
+                          'continue'.tr,
+                          style: textBold.copyWith(
+                            color: Colors.white,
+                            fontSize: Dimensions.fontSizeDefault,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Dimensions.paddingSizeSmall),
+
+                    // Set Location Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close dialog
+                          Get.to(() => const AccessLocationScreen());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                Dimensions.paddingSizeSmall),
+                            side: BorderSide(
+                                color: Theme.of(context).primaryColor),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: Dimensions.paddingSizeDefault),
+                        ),
+                        child: Text(
+                          'set_location'.tr,
+                          style: textBold.copyWith(
+                            color: Theme.of(context).primaryColor,
+                            fontSize: Dimensions.fontSizeDefault,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

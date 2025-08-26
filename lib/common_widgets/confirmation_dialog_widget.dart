@@ -87,12 +87,26 @@ class ConfirmationDialogWidget extends StatelessWidget {
                             textAlign: TextAlign.center)),
                     const SizedBox(height: Dimensions.paddingSizeLarge),
                     fromOpenLocation
-                        ? ButtonWidget(
-                            buttonText: 'open_setting'.tr,
-                            backgroundColor: Theme.of(context).primaryColor,
-                            onPressed: () => onYesPressed(),
-                            radius: Dimensions.radiusSmall,
-                            height: 40)
+                        ? Column(
+                            children: [
+                              ButtonWidget(
+                                  buttonText: 'open_setting'.tr,
+                                  backgroundColor:
+                                      Theme.of(context).primaryColor,
+                                  onPressed: () => onYesPressed(),
+                                  radius: Dimensions.radiusSmall,
+                                  height: 40),
+                              const SizedBox(
+                                  height: Dimensions.paddingSizeLarge),
+                              ButtonWidget(
+                                  buttonText: 'continue'.tr,
+                                  backgroundColor:
+                                      Theme.of(context).primaryColor,
+                                  onPressed: () => Get.back(),
+                                  radius: Dimensions.radiusSmall,
+                                  height: 40)
+                            ],
+                          )
                         : loading
                             ? SpinKitCircle(
                                 color: Theme.of(context).primaryColor,

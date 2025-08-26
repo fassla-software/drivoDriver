@@ -49,7 +49,8 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _findingCurrentRoute();
-    Get.find<ProfileController>().stopLocationRecord();
+    // إزالة stopLocationRecord من هنا لتجنب التضارب مع timer
+    // Get.find<ProfileController>().stopLocationRecord();
   }
 
   _findingCurrentRoute() {
@@ -82,7 +83,8 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
     if (_locationSubscription != null) {
       _locationSubscription!.cancel();
     }
-    Get.find<ProfileController>().startLocationRecord();
+    // إزالة startLocationRecord من هنا لتجنب التضارب مع timer
+    // Get.find<ProfileController>().startLocationRecord();
     super.dispose();
   }
 

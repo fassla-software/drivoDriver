@@ -944,5 +944,7 @@
   "end_location": "End Location",
   "unknown": "Unknown",
   "car_pool": "Car Pool",
-  "add_identity_image": "Add Identity Image Front and Back"
+  "add_identity_image": "Add Identity Image Front and Back",
+  "location_access_required": "Location Access Required",
+  "location_access_description": "To provide you with the best service, we need access to your location. You can continue without setting a location or set your preferred location now."
 }

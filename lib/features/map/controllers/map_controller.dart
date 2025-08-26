@@ -36,8 +36,6 @@ class RiderMapController extends GetxController implements GetxService {
   bool get isLoading => _isLoading;
   bool isRefresh = false;
 
-  Geolocator? _geolocator = Geolocator();
-
   bool _checkIsRideAccept = false;
   bool get checkIsRideAccept => _checkIsRideAccept;
   bool isTrafficEnable = false;
@@ -105,12 +103,11 @@ class RiderMapController extends GetxController implements GetxService {
     super.onInit();
   }
 
-  void initializeData() async {
+  void initializeData() {
     Get.find<RideController>().polyline = '';
     markers = {};
     polylines = {};
     _isLoading = false;
-    await myCurrentLocation();
   }
 
   void acceptedRideRequest() {
@@ -204,94 +201,6 @@ class RiderMapController extends GetxController implements GetxService {
     );
     polylines.add(polyline);
     update();
-  }
-
-  Future<void> myCurrentLocation() async {
-    try {
-      Position position;
-
-      // Try to get location with high accuracy first
-      try {
-        position = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10), // 10 second timeout
-          ),
-        );
-      } catch (e) {
-        // Fallback to medium accuracy if high accuracy fails
-        position = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(
-            accuracy: LocationAccuracy.medium,
-            timeLimit: Duration(seconds: 15), // 15 second timeout
-          ),
-        );
-      }
-
-      Uint8List car =
-          await convertAssetToUnit8List(Images.carIconTop, width: 80);
-
-      LatLng currentLatLng = LatLng(position.latitude, position.longitude);
-
-      // Remove existing current location marker
-      markers.removeWhere((marker) => marker.markerId.value == "current");
-
-      markers.add(Marker(
-        markerId: const MarkerId('current'),
-        position: currentLatLng,
-        icon: BitmapDescriptor.fromBytes(car),
-        infoWindow: InfoWindow(
-          title: 'use_current_location'.tr,
-          snippet: 'your_position'.tr,
-        ),
-      ));
-
-      // Move camera to current location
-      if (mapController != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(currentLatLng, 16),
-        );
-      }
-
-      update();
-    } catch (e) {
-      print('Error getting current location: $e');
-
-      // Fallback to default location if location services fail
-      LatLng fallbackLocation = Get.find<LocationController>().initialPosition;
-
-      Uint8List car = await convertAssetToUnit8List(Images.car, width: 200);
-
-      // Remove existing current location marker
-      markers.removeWhere((marker) => marker.markerId.value == "current");
-
-      markers.add(Marker(
-        markerId: const MarkerId('current'),
-        position: fallbackLocation,
-        icon: BitmapDescriptor.fromBytes(car),
-        infoWindow: InfoWindow(
-          title: 'default_location'.tr,
-          snippet: 'location_not_available'.tr,
-        ),
-      ));
-
-      // Move camera to fallback location
-      if (mapController != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(fallbackLocation, 16),
-        );
-      }
-
-      update();
-
-      // Show error message to user
-      Get.showSnackbar(GetSnackBar(
-        title: 'location_error'.tr,
-        message: 'unable_to_get_current_location'.tr,
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.orange,
-      ));
-    }
   }
 
   void setFromToMarker(LatLng from, LatLng to,

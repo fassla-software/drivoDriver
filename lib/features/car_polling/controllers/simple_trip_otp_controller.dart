@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../features/ride/domain/services/ride_service_interface.dart';
 
@@ -27,8 +28,10 @@ class SimpleTripOtpController extends GetxController {
   }
 
   void _showSnackBar(String message, bool isError) {
-    print('=== Showing SnackBar: $message, isError: $isError ===');
-    print('=== onShowSnackBar callback: ${onShowSnackBar != null} ===');
+    if (kDebugMode) {
+      print('=== Showing SnackBar: $message, isError: $isError ===');
+      print('=== onShowSnackBar callback: ${onShowSnackBar != null} ===');
+    }
 
     if (onShowSnackBar != null) {
       onShowSnackBar!(
@@ -37,7 +40,9 @@ class SimpleTripOtpController extends GetxController {
         icon: isError ? Icons.error_outline : Icons.check_circle,
       );
     } else {
-      print('=== SnackBar callback is null! ===');
+      if (kDebugMode) {
+        print('=== SnackBar callback is null! ===');
+      }
     }
   }
 
@@ -46,12 +51,16 @@ class SimpleTripOtpController extends GetxController {
     update();
 
     try {
-      print(
-          '=== Matching OTP for carpool_trip_id: $carpoolTripId, OTP: $otp ===');
+      if (kDebugMode) {
+        print(
+            '=== Matching OTP for carpool_trip_id: $carpoolTripId, OTP: $otp ===');
+      }
 
       final response = await rideServiceInterface.matchOtp(carpoolTripId, otp);
-      print('=== API Response: $response ===');
-      print('=== Response Type: ${response.runtimeType} ===');
+      if (kDebugMode) {
+        print('=== API Response: $response ===');
+        print('=== Response Type: ${response.runtimeType} ===');
+      }
 
       // Handle different response types
       bool isSuccess = false;
@@ -59,7 +68,9 @@ class SimpleTripOtpController extends GetxController {
       if (response is Map<String, dynamic>) {
         // Check response_code
         final responseCode = response["response_code"];
-        print('=== Response Code: $responseCode ===');
+        if (kDebugMode) {
+          print('=== Response Code: $responseCode ===');
+        }
 
         isSuccess = responseCode == "default_store_200" ||
             responseCode == "default_200" ||

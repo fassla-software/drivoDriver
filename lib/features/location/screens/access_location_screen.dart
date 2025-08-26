@@ -79,13 +79,31 @@ class AccessLocationScreen extends StatelessWidget {
                                         const SizedBox(
                                             height:
                                                 Dimensions.paddingSizeLarge),
-                                        const BottomButton()
+                                        const BottomButton(),
+                                        const ContinueButton(),
                                       ])))))),
             ],
           );
         }),
       ),
     ));
+  }
+}
+
+class ContinueButton extends StatelessWidget {
+  const ContinueButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+        padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
+        child: ButtonWidget(
+            fontSize: Dimensions.fontSizeSmall,
+            backgroundColor: Theme.of(context).primaryColor,
+            buttonText: 'continue'.tr,
+            onPressed: () async {
+              Get.back();
+            }));
   }
 }
 

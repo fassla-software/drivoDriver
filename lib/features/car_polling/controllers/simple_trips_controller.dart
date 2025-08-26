@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../data/api_checker.dart';
 import '../domain/models/simple_trip_model.dart';
@@ -37,13 +38,17 @@ class SimpleTripsController extends GetxController implements GetxService {
   @override
   void onInit() {
     super.onInit();
-    print('=== SimpleTripsController onInit called ===');
+    if (kDebugMode) {
+      print('=== SimpleTripsController onInit called ===');
+    }
     getCurrentTrips();
   }
 
   /// Get current trips from API
   Future<void> getCurrentTrips({bool isRefresh = false}) async {
-    print('=== getCurrentTrips called, isRefresh: $isRefresh ===');
+    if (kDebugMode) {
+      print('=== getCurrentTrips called, isRefresh: $isRefresh ===');
+    }
 
     if (isRefresh) {
       _isRefreshing = true;
@@ -53,34 +58,23 @@ class SimpleTripsController extends GetxController implements GetxService {
     update();
 
     try {
-      print('=== Making API call to getCurrentTripsWithPassengers ===');
+      if (kDebugMode) {
+        print('=== Making API call to getCurrentTripsWithPassengers ===');
+      }
       Response response =
           await currentTripsServiceInterface.getCurrentTripsWithPassengers();
 
-      print('=== API Response - Status Code: ${response.statusCode} ===');
-      print('=== API Response - Body: ${response.body} ===');
+      if (kDebugMode) {
+        print('=== API Response - Status Code: ${response.statusCode} ===');
+      }
 
       if (response.statusCode == 200) {
         _tripsResponse = SimpleTripsResponseModel.fromJson(response.body);
 
         if (_tripsResponse?.data != null) {
           _trips = _tripsResponse!.data!;
-          print('=== Loaded ${_trips.length} trips ===');
-
-          // Debug: Check passenger coordinates for each trip
-          for (int i = 0; i < _trips.length; i++) {
-            final trip = _trips[i];
-            print('=== Trip $i (ID: ${trip.id}): ===');
-            print(
-                '===   Passenger coordinates: ${trip.passengerCoordinates?.length ?? 0} ===');
-            print('===   Passengers: ${trip.passengers?.length ?? 0} ===');
-            if (trip.passengerCoordinates != null) {
-              for (int j = 0; j < trip.passengerCoordinates!.length; j++) {
-                final coord = trip.passengerCoordinates![j];
-                print(
-                    '===     Coord $j: type=${coord.type}, coords=${coord.coordinates} ===');
-              }
-            }
+          if (kDebugMode) {
+            print('=== Loaded ${_trips.length} trips ===');
           }
         } else {
           _clearData();
@@ -90,7 +84,9 @@ class SimpleTripsController extends GetxController implements GetxService {
         ApiChecker.checkApi(response);
       }
     } catch (e) {
-      print('=== API Error: $e ===');
+      if (kDebugMode) {
+        print('=== API Error: $e ===');
+      }
       _clearData();
       Get.showSnackbar(GetSnackBar(
         title: 'error'.tr,
