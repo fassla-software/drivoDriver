@@ -84,54 +84,107 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
   }
 
   void _searchLocation(String value) async {
-    // هنا يمكنك ربط البحث مع Apple Places API أو Google Places API
-    // لأغراض الديمو سنضع نتائج وهمية
-    setState(() {
-      _isSearching = true;
-      _showResults = true;
-    });
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (value.isEmpty) {
+    final query = value.trim();
+    if (query.isEmpty) {
       setState(() {
-        _searchResults = [];
-        _isSearching = false;
+        _searchResults.clear();
         _showResults = false;
       });
       return;
     }
+
     setState(() {
-      _searchResults = [
-        {
-          'name': 'Apple Park',
-          'address': 'Cupertino, CA',
-          'lat': 37.3349,
-          'lng': -122.0090,
-        },
-        {
-          'name': 'San Francisco',
-          'address': 'California, USA',
-          'lat': 37.7749,
-          'lng': -122.4194,
-        },
-      ];
-      _isSearching = false;
+      _isSearching = true;
       _showResults = true;
     });
+
+    try {
+      // Use the backend API through LocationController
+      final response = await Get.find<LocationController>()
+          .locationServiceInterface
+          .searchLocation(query);
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        if (data['data'] != null &&
+            data['data']['status'] == 'OK' &&
+            data['data']['predictions'] != null) {
+          List<Map<String, dynamic>> places = [];
+          for (var prediction in data['data']['predictions']) {
+            places.add({
+              'name': prediction['description'] ?? 'Unknown Place',
+              'address': prediction['description'] ?? 'Unknown Address',
+              'place_id': prediction['place_id'] ?? '',
+              'types': prediction['types'] ?? [],
+            });
+          }
+          setState(() {
+            _searchResults = places.take(10).toList();
+            _isSearching = false;
+            _showResults = true;
+          });
+        } else {
+          setState(() {
+            _searchResults = [];
+            _isSearching = false;
+            _showResults = true;
+          });
+        }
+      } else {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+          _showResults = true;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+        _showResults = true;
+      });
+    }
   }
 
-  void _onResultTap(Map<String, dynamic> result) {
-    LatLng position = LatLng(result['lat'], result['lng']);
-    setState(() {
-      _selectedPosition = position;
-      _addMarker(position, locationName: result['name']);
-      _searchController.text = result['name'];
-      _showResults = false;
-      _selectedLocationName = result['name'];
-    });
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(position, 16),
-    );
-    FocusScope.of(context).unfocus();
+  void _onResultTap(Map<String, dynamic> result) async {
+    // Get place details to get coordinates
+    try {
+      final response = await Get.find<LocationController>()
+          .locationServiceInterface
+          .getPlaceDetails(result['place_id']);
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        if (data['data'] != null &&
+            data['data']['status'] == 'OK' &&
+            data['data']['result'] != null) {
+          final geometry = data['data']['result']['geometry'];
+          if (geometry != null && geometry['location'] != null) {
+            final location = geometry['location'];
+            LatLng position = LatLng(
+              location['lat'].toDouble(),
+              location['lng'].toDouble(),
+            );
+            setState(() {
+              _selectedPosition = position;
+              _addMarker(position, locationName: result['name']);
+              _searchController.text = result['name'];
+              _showResults = false;
+              _selectedLocationName = result['name'];
+            });
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(position, 16),
+            );
+            FocusScope.of(context).unfocus();
+          }
+        }
+      }
+    } catch (e) {
+      // Handle error - could show a message to user
+      setState(() {
+        _showResults = false;
+      });
+    }
   }
 
   @override

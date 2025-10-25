@@ -64,6 +64,11 @@ class RiderMapController extends GetxController implements GetxService {
   double panelHeightOpen = 0;
 
   RideState currentRideState = RideState.initial;
+
+  void updateRoute() {
+    update();
+  }
+
   void setRideCurrentState(RideState newState, {bool notify = true}) {
     currentRideState = newState;
     if (currentRideState == RideState.initial) {

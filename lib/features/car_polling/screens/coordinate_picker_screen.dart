@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../features/location/controllers/location_controller.dart';
 import '../../../theme/theme_controller.dart';
@@ -37,9 +35,6 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   bool _showResults = false;
-
-  static const String _googlePlacesApiKey =
-      'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo';
 
   @override
   void initState() {
@@ -138,37 +133,26 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
       _isSearching = true;
       _showResults = true;
     });
+
     try {
-      LatLng? currentLocation;
-      try {
-        Position position = await Geolocator.getCurrentPosition();
-        currentLocation = LatLng(position.latitude, position.longitude);
-      } catch (e) {
-        currentLocation = Get.find<LocationController>().initialPosition;
-      }
-      final String url =
-          'https://maps.googleapis.com/maps/api/place/textsearch/json'
-          '?query=${Uri.encodeComponent(query)}'
-          '&location=${currentLocation.latitude},${currentLocation.longitude}'
-          '&radius=50000'
-          '&key=$_googlePlacesApiKey';
-      final response = await http.get(Uri.parse(url));
+      // Use the backend API through LocationController
+      final response = await Get.find<LocationController>()
+          .locationServiceInterface
+          .searchLocation(query);
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['status'] == 'OK') {
+        final data = response.body;
+        if (data['data'] != null &&
+            data['data']['status'] == 'OK' &&
+            data['data']['predictions'] != null) {
           List<Map<String, dynamic>> places = [];
-          for (var result in data['results']) {
-            if (result['geometry'] != null &&
-                result['geometry']['location'] != null) {
-              places.add({
-                'name': result['name'] ?? 'Unknown Place',
-                'address': result['formatted_address'] ?? 'Unknown Address',
-                'lat': result['geometry']['location']['lat'].toDouble(),
-                'lng': result['geometry']['location']['lng'].toDouble(),
-                'types': result['types'] ?? [],
-                'rating': result['rating']?.toDouble(),
-              });
-            }
+          for (var prediction in data['data']['predictions']) {
+            places.add({
+              'name': prediction['description'] ?? 'Unknown Place',
+              'address': prediction['description'] ?? 'Unknown Address',
+              'place_id': prediction['place_id'] ?? '',
+              'types': prediction['types'] ?? [],
+            });
           }
           setState(() {
             _searchResults = places.take(10).toList();
@@ -198,19 +182,45 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
     }
   }
 
-  void _onResultTap(Map<String, dynamic> result) {
-    LatLng position = LatLng(result['lat'], result['lng']);
-    setState(() {
-      _selectedPosition = position;
-      _addMarker(position, locationName: result['name']);
-      _searchController.text = result['name'];
-      _showResults = false;
-      _selectedLocationName = result['name'];
-    });
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(position, 16),
-    );
-    FocusScope.of(context).unfocus();
+  void _onResultTap(Map<String, dynamic> result) async {
+    // Get place details to get coordinates
+    try {
+      final response = await Get.find<LocationController>()
+          .locationServiceInterface
+          .getPlaceDetails(result['place_id']);
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        if (data['data'] != null &&
+            data['data']['status'] == 'OK' &&
+            data['data']['result'] != null) {
+          final geometry = data['data']['result']['geometry'];
+          if (geometry != null && geometry['location'] != null) {
+            final location = geometry['location'];
+            LatLng position = LatLng(
+              location['lat'].toDouble(),
+              location['lng'].toDouble(),
+            );
+            setState(() {
+              _selectedPosition = position;
+              _addMarker(position, locationName: result['name']);
+              _searchController.text = result['name'];
+              _showResults = false;
+              _selectedLocationName = result['name'];
+            });
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(position, 16),
+            );
+            FocusScope.of(context).unfocus();
+          }
+        }
+      }
+    } catch (e) {
+      // Handle error - could show a message to user
+      setState(() {
+        _showResults = false;
+      });
+    }
   }
 
   IconData _getPlaceIcon(List<dynamic>? types) {

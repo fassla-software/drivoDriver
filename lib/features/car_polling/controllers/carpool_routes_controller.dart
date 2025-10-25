@@ -86,12 +86,6 @@ class CarpoolRoutesController extends GetxController implements GetxService {
       _isLoading = false;
       _isLoadingMore = false;
       update();
-      Get.showSnackbar(GetSnackBar(
-        title: 'error'.tr,
-        message: 'failed_to_load_carpool_routes'.tr,
-        duration: const Duration(seconds: 3),
-        backgroundColor: Get.theme.colorScheme.error,
-      ));
     }
   }
 

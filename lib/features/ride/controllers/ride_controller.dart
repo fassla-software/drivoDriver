@@ -341,6 +341,8 @@ class RideController extends GetxController implements GetxService {
       isPinVerificationLoading = false;
       ApiChecker.checkApi(response);
     }
+    Get.find<RiderMapController>().update();
+    Get.find<RiderMapController>().updateRoute();
     update();
     return response;
   }

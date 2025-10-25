@@ -3,13 +3,9 @@ import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:math' as math;
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 import '../domain/models/simple_trip_model.dart';
-import '../domain/models/passenger_coordinate_model.dart';
 
 class SimpleTripMapController extends GetxController {
   final SimpleTripModel trip;
@@ -66,33 +62,33 @@ class SimpleTripMapController extends GetxController {
   }
 
   // أضف متغير لمفتاح Google Maps Directions API
-  static const String googleMapsApiKey =
-      'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo'; // ضع مفتاحك هنا
+  // static const String googleMapsApiKey =
+  //     'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo'; // ضع مفتاحك هنا
 
   /// جلب مسار القيادة الحقيقي من Google Directions API
-  Future<List<LatLng>> getRoutePolyline(List<LatLng> points) async {
-    if (points.length < 2) return points;
-    final origin = '${points.first.latitude},${points.first.longitude}';
-    final destination = '${points.last.latitude},${points.last.longitude}';
-    String waypoints = '';
-    if (points.length > 2) {
-      waypoints = points
-          .sublist(1, points.length - 1)
-          .map((p) => '${p.latitude},${p.longitude}')
-          .join('|');
-    }
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=$origin&destination=$destination${waypoints.isNotEmpty ? '&waypoints=$waypoints' : ''}&key=$googleMapsApiKey&mode=driving';
-    print('=== Directions API URL: $url ===');
-    final response = await http.get(Uri.parse(url));
-    final data = json.decode(response.body);
-    if (data['routes'] != null && data['routes'].isNotEmpty) {
-      final polyline = data['routes'][0]['overview_polyline']['points'];
-      return decodePolyline(polyline);
-    }
-    print('=== Directions API error: ${data['status']} ===');
-    return points;
-  }
+  // Future<List<LatLng>> getRoutePolyline(List<LatLng> points) async {
+  //   if (points.length < 2) return points;
+  //   final origin = '${points.first.latitude},${points.first.longitude}';
+  //   final destination = '${points.last.latitude},${points.last.longitude}';
+  //   String waypoints = '';
+  //   if (points.length > 2) {
+  //     waypoints = points
+  //         .sublist(1, points.length - 1)
+  //         .map((p) => '${p.latitude},${p.longitude}')
+  //         .join('|');
+  //   }
+  //   final url =
+  //       'https://maps.googleapis.com/maps/api/directions/json?origin=$origin&destination=$destination${waypoints.isNotEmpty ? '&waypoints=$waypoints' : ''}&key=$googleMapsApiKey&mode=driving';
+  //   print('=== Directions API URL: $url ===');
+  //   final response = await http.get(Uri.parse(url));
+  //   final data = json.decode(response.body);
+  //   if (data['routes'] != null && data['routes'].isNotEmpty) {
+  //     final polyline = data['routes'][0]['overview_polyline']['points'];
+  //     return decodePolyline(polyline);
+  //   }
+  //   print('=== Directions API error: ${data['status']} ===');
+  //   return points;
+  // }
 
   /// فك تشفير polyline
   List<LatLng> decodePolyline(String encoded) {
@@ -142,7 +138,7 @@ class SimpleTripMapController extends GetxController {
 
       // Load route data
       await _loadMainRoute();
-      await _loadDriverToStartRoute();
+      // await _loadDriverToStartRoute();
 
       _isLoading = false;
       update();
@@ -160,29 +156,40 @@ class SimpleTripMapController extends GetxController {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are disabled.');
+        print('=== Location services are disabled ===');
+        return;
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Location permissions are denied');
+          print('=== Location permissions are denied ===');
+          return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied');
+        print('=== Location permissions are permanently denied ===');
+        return;
       }
 
+      // Add timeout to prevent infinite loading
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('=== Location request timeout ===');
+          throw Exception('Location request timeout');
+        },
       );
 
       print(
           '=== Current position: ${_currentPosition?.latitude}, ${_currentPosition?.longitude} ===');
     } catch (e) {
       print('=== Error getting current location: $e ===');
+      // Don't throw error, just continue without location
     }
   }
 
@@ -304,7 +311,6 @@ class SimpleTripMapController extends GetxController {
     update();
   }
 
-  @override
   Future<void> _loadMainRoute() async {
     try {
       print('=== Loading main route ===');
@@ -328,27 +334,27 @@ class SimpleTripMapController extends GetxController {
     }
   }
 
-  Future<void> _loadDriverToStartRoute() async {
-    try {
-      if (_currentPosition != null &&
-          trip.startCoordinates != null &&
-          trip.startCoordinates!.length >= 2) {
-        // For now, create a simple route from driver to start
-        _driverToStartRoute = [
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          LatLng(
-              trip.startCoordinates![1],
-              trip.startCoordinates![
-                  0]), // [longitude, latitude] -> (latitude, longitude)
-        ];
+  // Future<void> _loadDriverToStartRoute() async {
+  //   try {
+  //     if (_currentPosition != null &&
+  //         trip.startCoordinates != null &&
+  //         trip.startCoordinates!.length >= 2) {
+  //       // For now, create a simple route from driver to start
+  //       _driverToStartRoute = [
+  //         LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+  //         LatLng(
+  //             trip.startCoordinates![1],
+  //             trip.startCoordinates![
+  //                 0]), // [longitude, latitude] -> (latitude, longitude)
+  //       ];
 
-        // Update polylines
-        _updateDriverToStartPolyline();
-      }
-    } catch (e) {
-      print('=== Error loading driver to start route: $e ===');
-    }
-  }
+  //       // Update polylines
+  //       _updateDriverToStartPolyline();
+  //     }
+  //   } catch (e) {
+  //     print('=== Error loading driver to start route: $e ===');
+  //   }
+  // }
 
   void _updateMainRoutePolyline() {
     print('=== Updating main route polyline ===');

@@ -8,7 +8,7 @@ class AppConstants {
       'https://drivoeg.com';
   /* 'https://drivemond-admin.codemond.com'; */
   static const String polylineMapKey =
-      'AIzaSyCHj3QwVPXAcG57hgUCowCRtbc4moArVH0';
+      'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo';
   /* 'AIzaSyCGSZyU5GjFtJuay5jjqRD-xIr3XhGu1Ek'; */
   //AIzaSyA8Qy5ipfdKm01zA3pDc-bK1ypII3tAKTI
   static const double appVersion = 1.0;

@@ -39,6 +39,12 @@ class DriverHeaderInfoWidget extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          // Animated UI for pending or accepted state
+          if (Get.find<RideController>().tripDetail != null &&
+              Get.find<RideController>().tripDetail!.currentStatus ==
+                  'accepted')
+            _buildAnimatedRiderButton(context),
+          // Original navigation button
           if (Get.find<RideController>().tripDetail != null)
             InkWell(
               onTap: () async {
@@ -141,6 +147,97 @@ class DriverHeaderInfoWidget extends StatelessWidget {
             )
         ],
       ),
+    );
+  }
+
+  Widget _buildAnimatedRiderButton(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.8 + (0.2 * value),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated icon
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 1200),
+                  builder: (context, iconValue, child) {
+                    return Transform.rotate(
+                      angle: iconValue * 0.1,
+                      child: Icon(
+                        Icons.person_pin_circle,
+                        color: Colors.white,
+                        size: 20 + (5 * iconValue),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                // Text with animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 1000),
+                  builder: (context, textValue, child) {
+                    return Opacity(
+                      opacity: textValue,
+                      child: Text(
+                        'go_to_your_destination'.tr,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                // Pulsing arrow with simple animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 1500),
+                  builder: (context, arrowValue, child) {
+                    return Transform.translate(
+                      offset: Offset(arrowValue * 2, 0),
+                      child: Icon(
+                        Icons.arrow_forward_ios,
+                        color:
+                            Colors.white.withOpacity(0.8 + (0.2 * arrowValue)),
+                        size: 16,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

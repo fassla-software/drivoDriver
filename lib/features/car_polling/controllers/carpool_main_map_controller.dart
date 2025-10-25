@@ -11,7 +11,6 @@ import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 import '../domain/models/simple_trip_model.dart';
-import '../domain/models/passenger_coordinate_model.dart';
 
 class CarpoolMainMapController extends GetxController {
   final SimpleTripModel carpoolTrip;
@@ -90,7 +89,7 @@ class CarpoolMainMapController extends GetxController {
     return (_toDegrees(bearing) + 360) % 360;
   }
 
-  double _toRadians(double degrees) => degrees * (math.pi / 180.0);
+  // double _toRadians(double degrees) => degrees * (math.pi / 180.0);
 
   double _toDegrees(double radians) => radians * (180.0 / math.pi);
 
@@ -106,43 +105,42 @@ class CarpoolMainMapController extends GetxController {
         .asUint8List();
   }
 
+  // Disabled: Not needed anymore since we removed the orange line from current to start
   // Get route from Google Directions API
-  Future<List<LatLng>> _getRouteFromGoogleDirections(
-      LatLng origin, LatLng destination) async {
-    try {
-      final url =
-          Uri.parse('https://maps.googleapis.com/maps/api/directions/json?'
-              'origin=${origin.latitude},${origin.longitude}'
-              '&destination=${destination.latitude},${destination.longitude}'
-              '&key=$googleMapsApiKey');
-
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
-          final route = data['routes'][0];
-          final polyline = route['overview_polyline']['points'];
-
-          // Decode polyline
-          PolylinePoints polylinePoints = PolylinePoints();
-          List<PointLatLng> result = polylinePoints.decodePolyline(polyline);
-
-          return result.map((p) => LatLng(p.latitude, p.longitude)).toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      print('=== Error in _getRouteFromGoogleDirections: $e ===');
-      return [];
-    }
-  }
+  // Future<List<LatLng>> _getRouteFromGoogleDirections(
+  //     LatLng origin, LatLng destination) async {
+  //   try {
+  //     final url =
+  //         Uri.parse('https://maps.googleapis.com/maps/api/directions/json?'
+  //             'origin=${origin.latitude},${origin.longitude}'
+  //             '&destination=${destination.latitude},${destination.longitude}'
+  //             '&key=$googleMapsApiKey');
+  //
+  //     final response = await http.get(url);
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //
+  //       if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
+  //         final route = data['routes'][0];
+  //         final polyline = route['overview_polyline']['points'];
+  //
+  //         // Decode polyline
+  //         PolylinePoints polylinePoints = PolylinePoints();
+  //         List<PointLatLng> result = polylinePoints.decodePolyline(polyline);
+  //
+  //         return result.map((p) => LatLng(p.latitude, p.longitude)).toList();
+  //       }
+  //     }
+  //
+  //     return [];
+  //   } catch (e) {
+  //     print('=== Error in _getRouteFromGoogleDirections: $e ===');
+  //     return [];
+  //   }
+  // }
 
   // Google Maps Directions API key
-  static const String googleMapsApiKey =
-      'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo';
 
   /// Decode polyline
   List<LatLng> decodePolyline(String encoded) {
@@ -241,9 +239,6 @@ class CarpoolMainMapController extends GetxController {
       _currentPosition = await Geolocator.getCurrentPosition();
       print(
           '=== Current position: ${_currentPosition!.latitude}, ${_currentPosition!.longitude} ===');
-
-      // Update polylines after getting current position
-      _updateCurrentToStartPolyline();
     } catch (e) {
       print('=== Error getting current location: $e ===');
     }
@@ -396,88 +391,89 @@ class CarpoolMainMapController extends GetxController {
     update();
   }
 
-  void _updateCurrentToStartPolyline() async {
-    print('=== Updating current to start polyline ===');
-
-    // Add polyline from current position to start point if available
-    if (_currentPosition != null &&
-        carpoolTrip.startCoordinates != null &&
-        carpoolTrip.startCoordinates!.length >= 2) {
-      // Remove existing current_to_start polyline if exists
-      _polylines.removeWhere((polyline) =>
-          polyline.polylineId == const PolylineId('current_to_start'));
-
-      final startPoint = LatLng(
-          carpoolTrip.startCoordinates![1], carpoolTrip.startCoordinates![0]);
-      final currentPoint =
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
-
-      print(
-          '=== Current point: ${currentPoint.latitude.toStringAsFixed(4)}, ${currentPoint.longitude.toStringAsFixed(4)} ===');
-      print(
-          '=== Start point: ${startPoint.latitude.toStringAsFixed(4)}, ${startPoint.longitude.toStringAsFixed(4)} ===');
-
-      // Only add if current position is different from start point
-      if (currentPoint.latitude != startPoint.latitude ||
-          currentPoint.longitude != startPoint.longitude) {
-        // Get route from Google Directions API
-        try {
-          final routePoints =
-              await _getRouteFromGoogleDirections(currentPoint, startPoint);
-          if (routePoints.isNotEmpty) {
-            _polylines.add(
-              Polyline(
-                polylineId: const PolylineId('current_to_start'),
-                points: routePoints,
-                color: Colors.orange,
-                width: 3,
-                geodesic: true,
-              ),
-            );
-            print(
-                '=== Current to start polyline added successfully with ${routePoints.length} points ===');
-          } else {
-            // Fallback to direct line if API fails
-            _polylines.add(
-              Polyline(
-                polylineId: const PolylineId('current_to_start'),
-                points: [currentPoint, startPoint],
-                color: Colors.orange,
-                width: 3,
-                geodesic: true,
-              ),
-            );
-            print('=== Fallback: Direct line polyline added ===');
-          }
-        } catch (e) {
-          print('=== Error getting route from Google Directions: $e ===');
-          // Fallback to direct line
-          _polylines.add(
-            Polyline(
-              polylineId: const PolylineId('current_to_start'),
-              points: [currentPoint, startPoint],
-              color: Colors.orange,
-              width: 3,
-              geodesic: true,
-            ),
-          );
-          print('=== Fallback: Direct line polyline added after error ===');
-        }
-      } else {
-        print(
-            '=== Current position is same as start point, no polyline needed ===');
-      }
-    } else {
-      print('=== Cannot create current to start polyline: missing data ===');
-      print(
-          '=== Current position: ${_currentPosition != null ? 'available' : 'null'} ===');
-      print(
-          '=== Start coordinates: ${carpoolTrip.startCoordinates != null ? 'available' : 'null'} ===');
-    }
-
-    print('=== Total polylines after update: ${_polylines.length} ===');
-    update();
-  }
+  // Disabled: This function was drawing an orange line from current position to start point
+  // void _updateCurrentToStartPolyline() async {
+  //   print('=== Updating current to start polyline ===');
+  //
+  //   // Add polyline from current position to start point if available
+  //   if (_currentPosition != null &&
+  //       carpoolTrip.startCoordinates != null &&
+  //       carpoolTrip.startCoordinates!.length >= 2) {
+  //     // Remove existing current_to_start polyline if exists
+  //     _polylines.removeWhere((polyline) =>
+  //         polyline.polylineId == const PolylineId('current_to_start'));
+  //
+  //     final startPoint = LatLng(
+  //         carpoolTrip.startCoordinates![1], carpoolTrip.startCoordinates![0]);
+  //     final currentPoint =
+  //         LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+  //
+  //     print(
+  //         '=== Current point: ${currentPoint.latitude.toStringAsFixed(4)}, ${currentPoint.longitude.toStringAsFixed(4)} ===');
+  //     print(
+  //         '=== Start point: ${startPoint.latitude.toStringAsFixed(4)}, ${startPoint.longitude.toStringAsFixed(4)} ===');
+  //
+  //     // Only add if current position is different from start point
+  //     if (currentPoint.latitude != startPoint.latitude ||
+  //         currentPoint.longitude != startPoint.longitude) {
+  //       // Get route from Google Directions API
+  //       try {
+  //         final routePoints =
+  //             await _getRouteFromGoogleDirections(currentPoint, startPoint);
+  //         if (routePoints.isNotEmpty) {
+  //           _polylines.add(
+  //             Polyline(
+  //               polylineId: const PolylineId('current_to_start'),
+  //               points: routePoints,
+  //               color: Colors.orange,
+  //               width: 3,
+  //               geodesic: true,
+  //             ),
+  //           );
+  //           print(
+  //               '=== Current to start polyline added successfully with ${routePoints.length} points ===');
+  //         } else {
+  //           // Fallback to direct line if API fails
+  //           _polylines.add(
+  //             Polyline(
+  //               polylineId: const PolylineId('current_to_start'),
+  //               points: [currentPoint, startPoint],
+  //               color: Colors.orange,
+  //               width: 3,
+  //               geodesic: true,
+  //             ),
+  //           );
+  //           print('=== Fallback: Direct line polyline added ===');
+  //         }
+  //       } catch (e) {
+  //         print('=== Error getting route from Google Directions: $e ===');
+  //         // Fallback to direct line
+  //         _polylines.add(
+  //           Polyline(
+  //             polylineId: const PolylineId('current_to_start'),
+  //             points: [currentPoint, startPoint],
+  //             color: Colors.orange,
+  //             width: 3,
+  //             geodesic: true,
+  //           ),
+  //         );
+  //         print('=== Fallback: Direct line polyline added after error ===');
+  //       }
+  //     } else {
+  //       print(
+  //           '=== Current position is same as start point, no polyline needed ===');
+  //     }
+  //   } else {
+  //     print('=== Cannot create current to start polyline: missing data ===');
+  //     print(
+  //         '=== Current position: ${_currentPosition != null ? 'available' : 'null'} ===');
+  //     print(
+  //         '=== Start coordinates: ${carpoolTrip.startCoordinates != null ? 'available' : 'null'} ===');
+  //   }
+  //
+  //   print('=== Total polylines after update: ${_polylines.length} ===');
+  //   update();
+  // }
 
   Future<void> _loadMainRoute() async {
     try {
@@ -685,9 +681,6 @@ class CarpoolMainMapController extends GetxController {
       ),
     );
 
-    // Update polylines with new position
-    _updateCurrentToStartPolyline();
-
     // Move camera to follow car if following is enabled
     if (_isFollowingDriver && _mapController != null) {
       _mapController!.animateCamera(
@@ -760,9 +753,6 @@ class CarpoolMainMapController extends GetxController {
         icon: BitmapDescriptor.fromBytes(carIcon),
       ));
     }
-
-    // Update polylines with new position
-    _updateCurrentToStartPolyline();
 
     update();
   }

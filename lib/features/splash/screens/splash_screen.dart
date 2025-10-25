@@ -133,8 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
               }
             });
           } else {
-            if (Get.find<SplashController>().config!.maintenanceMode !=
-                    null &&
+            if (Get.find<SplashController>().config!.maintenanceMode != null &&
                 Get.find<SplashController>()
                         .config!
                         .maintenanceMode!

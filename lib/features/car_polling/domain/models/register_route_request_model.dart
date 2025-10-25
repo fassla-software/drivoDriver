@@ -19,7 +19,6 @@ class RegisterRouteRequestModel {
   final String vehicleId;
   final double price;
   final List<RestStopModel> restStops;
-  final String encodedPolyline;
   RegisterRouteRequestModel({
     required this.startLat,
     required this.startLng,
@@ -39,7 +38,6 @@ class RegisterRouteRequestModel {
     required this.vehicleId,
     required this.price,
     required this.restStops,
-    required this.encodedPolyline,
   });
 
   Map<String, dynamic> toJson() {
@@ -62,7 +60,6 @@ class RegisterRouteRequestModel {
       'vehicle_id': vehicleId,
       'price': price,
       'rest_stops': restStops.map((stop) => stop.toJson()).toList(),
-      "encoded_polyline": encodedPolyline,
     };
   }
 }

@@ -516,13 +516,7 @@ class RegisterRouteController extends GetxController {
       return;
     }
 
-    // Generate encoded polyline before sending request
-    await generateEncodedPolyline();
-
-    // Check if polyline was generated successfully
-    if (_encodedPolyline.isEmpty) {
-      print('====> Warning: Polyline is empty, proceeding anyway');
-    }
+    // Note: Encoded polyline generation removed - backend will handle route calculation
 
     _isLoading = true;
     update();
@@ -552,7 +546,6 @@ class RegisterRouteController extends GetxController {
         hasScreenEntertainment: _hasScreenEntertainment ? 1 : 0,
         allowLuggage: _allowLuggage ? 1 : 0,
         restStops: _restStops,
-        encodedPolyline: encodedPolyline,
       );
 
       // Call the API service
