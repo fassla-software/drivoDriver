@@ -1,0 +1,2 @@
+/Users/a1/Flutter Projects/drivoDriver/android/app/.cxx/Debug/36q73o62/x86/CMakeFiles/edit_cache.dir
+/Users/a1/Flutter Projects/drivoDriver/android/app/.cxx/Debug/36q73o62/x86/CMakeFiles/rebuild_cache.dir

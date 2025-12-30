@@ -22,7 +22,8 @@ import 'package:ride_sharing_user_app/features/splash/controllers/splash_control
 import 'package:ride_sharing_user_app/features/trip/screens/payment_received_screen.dart';
 import 'package:ride_sharing_user_app/features/trip/screens/review_this_customer_screen.dart';
 import 'package:ride_sharing_user_app/common_widgets/confirmation_dialog_widget.dart';
-import 'package:ride_sharing_user_app/common_widgets/button_widget.dart';
+
+import 'pick_up_time.dart';
 
 class CustomerRideRequestCardWidget extends StatefulWidget {
   final TripDetail rideRequest;
@@ -696,7 +697,9 @@ class _CustomerRideRequestCardWidgetState
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
-                                            '${Get.find<RideController>().matchedMode!.duration!} ${'pickup_time'.tr}',
+                                            // '${widget.rideRequest.distanceText} ${'distanceToClient'.tr}',
+                                            '${Get.find<RideController>().matchedMode?.distanceText ?? '0 m'} ${'distanceToClient'.tr}',
+
                                             style: textRegular.copyWith(
                                               color: Theme.of(context)
                                                   .primaryColor,
@@ -1860,299 +1863,339 @@ class _CustomerRideRequestCardWidgetState
                                             size: 40.0,
                                           ),
                                         )
-                                      : Row(children: [
-                                          Expanded(
-                                            child: Container(
-                                              height: 50,
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                  colors: [
-                                                    Colors.white,
-                                                    Colors.white.withValues(
-                                                        alpha: 0.98),
-                                                    Colors.white.withValues(
-                                                        alpha: 0.95),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .circular(Dimensions
-                                                        .paddingSizeDefault),
-                                                border: Border.all(
-                                                  color: Theme.of(Get.context!)
-                                                      .primaryColor,
-                                                  width: 2.5,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black
-                                                        .withValues(
-                                                            alpha: 0.15),
-                                                    blurRadius: 15,
-                                                    offset: const Offset(0, 6),
+                                      : Column(
+                                          children: [
+                                            DistanaceToClient(
+                                                widget.rideRequest),
+                                            Row(children: [
+                                              Expanded(
+                                                child: Container(
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        Colors.white,
+                                                        Colors.white.withValues(
+                                                            alpha: 0.98),
+                                                        Colors.white.withValues(
+                                                            alpha: 0.95),
+                                                      ],
+                                                      stops: const [
+                                                        0.0,
+                                                        0.5,
+                                                        1.0
+                                                      ],
+                                                    ),
+                                                    borderRadius: BorderRadius
+                                                        .circular(Dimensions
+                                                            .paddingSizeDefault),
+                                                    border: Border.all(
+                                                      color:
+                                                          Theme.of(Get.context!)
+                                                              .primaryColor,
+                                                      width: 2.5,
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha: 0.15),
+                                                        blurRadius: 15,
+                                                        offset:
+                                                            const Offset(0, 6),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius: BorderRadius
-                                                      .circular(Dimensions
-                                                          .paddingSizeDefault),
-                                                  onTap: () {
-                                                    if (bidOn &&
-                                                        widget.rideRequest
-                                                                .fareBiddings !=
-                                                            null &&
-                                                        widget
-                                                            .rideRequest
-                                                            .fareBiddings!
-                                                            .isEmpty &&
-                                                        widget.rideRequest
-                                                                .type !=
-                                                            'parcel') {
-                                                      showDialog(
-                                                        context: Get.context!,
-                                                        builder: (_) =>
-                                                            BiddingDialogWidget(
-                                                                rideRequest: widget
-                                                                    .rideRequest),
-                                                      );
-                                                    } else {
-                                                      Get.find<RideController>()
-                                                          .tripAcceptOrRejected(
-                                                              widget.rideRequest
-                                                                  .id!,
-                                                              'rejected',
-                                                              index: widget
-                                                                      .index ??
-                                                                  0)
-                                                          .then((value) {
-                                                        if (value.statusCode ==
-                                                            200) {
+                                                  child: Material(
+                                                    color: Colors.transparent,
+                                                    child: InkWell(
+                                                      borderRadius: BorderRadius
+                                                          .circular(Dimensions
+                                                              .paddingSizeDefault),
+                                                      onTap: () {
+                                                        if (bidOn &&
+                                                            widget.rideRequest
+                                                                    .fareBiddings !=
+                                                                null &&
+                                                            widget
+                                                                .rideRequest
+                                                                .fareBiddings!
+                                                                .isEmpty &&
+                                                            widget.rideRequest
+                                                                    .type !=
+                                                                'parcel') {
+                                                          showDialog(
+                                                            context:
+                                                                Get.context!,
+                                                            builder: (_) =>
+                                                                BiddingDialogWidget(
+                                                                    rideRequest:
+                                                                        widget
+                                                                            .rideRequest),
+                                                          );
+                                                        } else {
                                                           Get.find<
                                                                   RideController>()
-                                                              .getPendingRideRequestList(
-                                                                  1);
-                                                          if (widget.fromList) {
-                                                            Get.find<
-                                                                    RiderMapController>()
-                                                                .setRideCurrentState(
-                                                                    RideState
-                                                                        .initial);
-                                                          }
-                                                        }
-                                                      });
-                                                    }
-                                                  },
-                                                  child: Center(
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(6),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Theme.of(Get
-                                                                    .context!)
-                                                                .primaryColor
-                                                                .withValues(
-                                                                    alpha: 0.1),
-                                                            shape:
-                                                                BoxShape.circle,
-                                                          ),
-                                                          child: Icon(
-                                                            Icons.close,
-                                                            color: Theme.of(Get
-                                                                    .context!)
-                                                                .primaryColor,
-                                                            size: 20,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Text(
-                                                          (bidOn &&
-                                                                  widget.rideRequest
-                                                                          .type !=
-                                                                      'parcel' &&
-                                                                  widget.rideRequest
-                                                                          .fareBiddings !=
-                                                                      null &&
+                                                              .tripAcceptOrRejected(
                                                                   widget
                                                                       .rideRequest
-                                                                      .fareBiddings!
-                                                                      .isEmpty)
-                                                              ? 'bid'.tr
-                                                              : 'reject'.tr,
-                                                          style:
-                                                              textBold.copyWith(
-                                                            color: Theme.of(Get
-                                                                    .context!)
-                                                                .primaryColor,
-                                                            fontSize: Dimensions
-                                                                .fontSizeLarge,
-                                                          ),
+                                                                      .id!,
+                                                                  'rejected',
+                                                                  index: widget
+                                                                          .index ??
+                                                                      0)
+                                                              .then((value) {
+                                                            if (value
+                                                                    .statusCode ==
+                                                                200) {
+                                                              Get.find<
+                                                                      RideController>()
+                                                                  .getPendingRideRequestList(
+                                                                      1);
+                                                              if (widget
+                                                                  .fromList) {
+                                                                Get.find<
+                                                                        RiderMapController>()
+                                                                    .setRideCurrentState(
+                                                                        RideState
+                                                                            .initial);
+                                                              }
+                                                            }
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Center(
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(6),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: Theme.of(Get
+                                                                        .context!)
+                                                                    .primaryColor
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.1),
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Icons.close,
+                                                                color: Theme.of(
+                                                                        Get.context!)
+                                                                    .primaryColor,
+                                                                size: 20,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                                width: 8),
+                                                            Text(
+                                                              (bidOn &&
+                                                                      widget.rideRequest
+                                                                              .type !=
+                                                                          'parcel' &&
+                                                                      widget.rideRequest
+                                                                              .fareBiddings !=
+                                                                          null &&
+                                                                      widget
+                                                                          .rideRequest
+                                                                          .fareBiddings!
+                                                                          .isEmpty)
+                                                                  ? 'bid'.tr
+                                                                  : 'reject'.tr,
+                                                              style: textBold
+                                                                  .copyWith(
+                                                                color: Theme.of(
+                                                                        Get.context!)
+                                                                    .primaryColor,
+                                                                fontSize: Dimensions
+                                                                    .fontSizeLarge,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                      ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                              width:
-                                                  Dimensions.paddingSizeLarge),
-                                          Expanded(
-                                            child: Container(
-                                              height: 50,
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                  colors: [
-                                                    Theme.of(context)
-                                                        .primaryColor,
-                                                    Theme.of(context)
-                                                        .primaryColor
-                                                        .withValues(alpha: 0.8),
-                                                    Theme.of(context)
-                                                        .primaryColor
-                                                        .withValues(alpha: 0.7),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ),
-                                                borderRadius: BorderRadius
-                                                    .circular(Dimensions
-                                                        .paddingSizeDefault),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Theme.of(context)
-                                                        .primaryColor
-                                                        .withValues(alpha: 0.5),
-                                                    blurRadius: 20,
-                                                    offset: const Offset(0, 8),
+                                              const SizedBox(
+                                                  width: Dimensions
+                                                      .paddingSizeLarge),
+                                              Expanded(
+                                                child: Container(
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        Theme.of(context)
+                                                            .primaryColor,
+                                                        Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                                alpha: 0.8),
+                                                        Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                                alpha: 0.7),
+                                                      ],
+                                                      stops: const [
+                                                        0.0,
+                                                        0.5,
+                                                        1.0
+                                                      ],
+                                                    ),
+                                                    borderRadius: BorderRadius
+                                                        .circular(Dimensions
+                                                            .paddingSizeDefault),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Theme.of(context)
+                                                            .primaryColor
+                                                            .withValues(
+                                                                alpha: 0.5),
+                                                        blurRadius: 20,
+                                                        offset:
+                                                            const Offset(0, 8),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius: BorderRadius
-                                                      .circular(Dimensions
-                                                          .paddingSizeDefault),
-                                                  onTap: () async {
-                                                    Get.find<RideController>()
-                                                        .tripAcceptOrRejected(
-                                                            widget.rideRequest
-                                                                .id!,
-                                                            'accepted',
-                                                            index:
-                                                                widget.index ??
-                                                                    0)
-                                                        .then((value) async {
-                                                      if (value.statusCode ==
-                                                          200) {
+                                                  child: Material(
+                                                    color: Colors.transparent,
+                                                    child: InkWell(
+                                                      borderRadius: BorderRadius
+                                                          .circular(Dimensions
+                                                              .paddingSizeDefault),
+                                                      onTap: () async {
                                                         Get.find<
-                                                                AuthController>()
-                                                            .saveRideCreatedTime();
-                                                        if (widget.fromList) {
-                                                          Get.find<
-                                                                  RideController>()
-                                                              .getRideDetails(
-                                                                  widget
-                                                                      .rideRequest
-                                                                      .id!)
-                                                              .then(
-                                                                  (value) async {
-                                                            if (value
-                                                                    .statusCode ==
-                                                                200) {
+                                                                RideController>()
+                                                            .tripAcceptOrRejected(
+                                                                widget
+                                                                    .rideRequest
+                                                                    .id!,
+                                                                'accepted',
+                                                                index: widget
+                                                                        .index ??
+                                                                    0)
+                                                            .then(
+                                                                (value) async {
+                                                          if (value
+                                                                  .statusCode ==
+                                                              200) {
+                                                            Get.find<
+                                                                    AuthController>()
+                                                                .saveRideCreatedTime();
+                                                            if (widget
+                                                                .fromList) {
+                                                              Get.find<
+                                                                      RideController>()
+                                                                  .getRideDetails(
+                                                                      widget
+                                                                          .rideRequest
+                                                                          .id!)
+                                                                  .then(
+                                                                      (value) async {
+                                                                if (value
+                                                                        .statusCode ==
+                                                                    200) {
+                                                                  Get.find<
+                                                                          RiderMapController>()
+                                                                      .setRideCurrentState(
+                                                                          RideState
+                                                                              .accepted);
+                                                                  Get.find<
+                                                                          RideController>()
+                                                                      .updateRoute(
+                                                                          false,
+                                                                          notify:
+                                                                              true);
+                                                                  Get.to(() =>
+                                                                      const MapScreen());
+                                                                }
+                                                              });
+                                                            } else {
+                                                              Get.dialog(
+                                                                  const BidAcceptingDialogueWidget(),
+                                                                  barrierDismissible:
+                                                                      false);
+                                                              await Future.delayed(
+                                                                  const Duration(
+                                                                      seconds:
+                                                                          5));
+                                                              Get.back();
                                                               Get.find<
                                                                       RiderMapController>()
                                                                   .setRideCurrentState(
                                                                       RideState
                                                                           .accepted);
-                                                              Get.find<
-                                                                      RideController>()
-                                                                  .updateRoute(
-                                                                      false,
-                                                                      notify:
-                                                                          true);
                                                               Get.to(() =>
                                                                   const MapScreen());
                                                             }
-                                                          });
-                                                        } else {
-                                                          Get.dialog(
-                                                              const BidAcceptingDialogueWidget(),
-                                                              barrierDismissible:
-                                                                  false);
-                                                          await Future.delayed(
-                                                              const Duration(
-                                                                  seconds: 5));
-                                                          Get.back();
-                                                          Get.find<
-                                                                  RiderMapController>()
-                                                              .setRideCurrentState(
-                                                                  RideState
-                                                                      .accepted);
-                                                          Get.to(() =>
-                                                              const MapScreen());
-                                                        }
-                                                      }
-                                                    });
-                                                  },
-                                                  child: Center(
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(6),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors.white
-                                                                .withValues(
-                                                                    alpha: 0.2),
-                                                            shape:
-                                                                BoxShape.circle,
-                                                          ),
-                                                          child: Icon(
-                                                            Icons.check_circle,
-                                                            color: Colors.white,
-                                                            size: 20,
-                                                          ),
+                                                          }
+                                                        });
+                                                      },
+                                                      child: Center(
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(6),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: Colors
+                                                                    .white
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.2),
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Icons
+                                                                    .check_circle,
+                                                                color: Colors
+                                                                    .white,
+                                                                size: 20,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                                width: 8),
+                                                            Text(
+                                                              'accept'.tr,
+                                                              style: textBold
+                                                                  .copyWith(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: Dimensions
+                                                                    .fontSizeLarge,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Text(
-                                                          'accept'.tr,
-                                                          style:
-                                                              textBold.copyWith(
-                                                            color: Colors.white,
-                                                            fontSize: Dimensions
-                                                                .fontSizeLarge,
-                                                          ),
-                                                        ),
-                                                      ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                        ]),
+                                            ]),
+                                          ],
+                                        ),
                                 );
                               }),
                             ]),

@@ -214,7 +214,8 @@ class RideController extends GetxController implements GetxService {
       tripDetail = TripDetailsModel.fromJson(response.body).data!;
       isLoading = false;
       polyline = tripDetail!.encodedPolyline!;
-      Get.find<RideController>().remainingDistance(tripId, mapBound: true);
+      await Get.find<RideController>()
+          .remainingDistance(tripId, mapBound: true);
       Get.find<RiderMapController>().getPickupToDestinationPolyline();
       if (kDebugMode) {
         print('polyline is ====> $polyline');
@@ -373,8 +374,11 @@ class RideController extends GetxController implements GetxService {
           statusCode: 400, body: {'error': 'No trip detail available'});
     }
 
-    myDriveMode =
-        Get.find<ProfileController>().profileInfo!.vehicle!.category!.type!;
+    if (Get.find<ProfileController>().profileInfo?.vehicle?.category?.type !=
+        null) {
+      myDriveMode =
+          Get.find<ProfileController>().profileInfo!.vehicle!.category!.type!;
+    }
     isLoading = true;
     Response response = await rideServiceInterface.remainDistance(tripId);
     List<String> status = ['accepted', 'ongoing'];

@@ -63,6 +63,7 @@ class FinalFare {
   double? idleTime;
   double? actualTime;
   double? estimatedTime;
+  String? distanceText;
 
   FinalFare(
       {this.id,
@@ -76,6 +77,7 @@ class FinalFare {
         this.paymentMethod,
         this.couponAmount,
         this.discountAmount,
+        this.distanceText,
         this.note,
         this.otp,
         this.riseRequestCount,
@@ -144,6 +146,7 @@ class FinalFare {
     }
 
     note = json['note'];
+    distanceText = json['distance_text'];
     otp = json['otp'];
     riseRequestCount = json['rise_request_count'];
     type = json['type'];

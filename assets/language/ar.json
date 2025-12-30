@@ -232,6 +232,7 @@
   "sub_total": "الإجمالي الجزئي",
   "time": "الوقت",
   "distance": "المسافة",
+  "distanceToClient": "المسافة إلى العميل",
   "route": "المسار",
   "your_success_rate_for_this_trip": "معدل نجاحك لهذه الرحلة",
   "payment_details": "تفاصيل الدفع",
@@ -941,5 +942,6 @@
   "location_access_required": "مطلوب الوصول للموقع",
   "location_access_description": "لتقديم أفضل خدمة لك، نحتاج إلى الوصول لموقعك. يمكنك المتابعة بدون تحديد موقع أو تحديد موقعك المفضل الآن.",
   "go_to_your_rider": "الذهاب إلى الراكب",
-  "go_to_your_destination": "الذهاب إلى الوجهة"
+  "go_to_your_destination": "الذهاب إلى الوجهة",
+  "not_activated": "غير مشترك"
 }

@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/a1/development/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/a1/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/a1/Flutter Projects/drivoDriver/android/app/.cxx/RelWithDebInfo/2x3b6j2c/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/a1/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/a1/Flutter Projects/drivoDriver/android/app/.cxx/RelWithDebInfo/2x3b6j2c/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

@@ -921,9 +921,11 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
     );
   }
 
-  void _showSnackBar(String message, Color backgroundColor, {IconData icon = Icons.info_outline, Duration duration = const Duration(seconds: 3)}) {
+  void _showSnackBar(String message, Color backgroundColor,
+      {IconData icon = Icons.info_outline,
+      Duration duration = const Duration(seconds: 3)}) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

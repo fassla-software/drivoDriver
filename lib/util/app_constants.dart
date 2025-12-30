@@ -15,6 +15,7 @@ class AppConstants {
 
   /// Flutter SDK 3.24.0
   static const String configUri = '/api/driver/configuration';
+  static const String driverConfigurationUri = '/api/driver/configuration';
   static const String registration = '/api/driver/auth/registration';
   static const String loginUri = '/api/driver/auth/login';
   static const String logout = '/api/user/logout';
