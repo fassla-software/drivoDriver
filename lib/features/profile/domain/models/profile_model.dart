@@ -43,7 +43,8 @@ class ProfileInfo {
   double? totalCommission;
   double? paidAmount;
   double? levelUpRewardAmount;
-
+  int? carpoolStatus;
+bool get isCarpoolActivated => carpoolStatus == 1;
   ProfileInfo(
       {this.id,
       this.firstName,
@@ -70,7 +71,8 @@ class ProfileInfo {
       this.totalEarning,
       this.totalCommission,
       this.paidAmount,
-      this.levelUpRewardAmount});
+      this.levelUpRewardAmount,
+      this.carpoolStatus});
 
   ProfileInfo.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -101,6 +103,7 @@ class ProfileInfo {
     totalCommission = json['total_commission'].toDouble();
     paidAmount = json['paid_amount'].toDouble();
     levelUpRewardAmount = json['level_up_reward_amount'].toDouble();
+    carpoolStatus = json['carpool_status'];
     if (json['old_identification_image'] == null &&
         json['identification_image'] == null) {
       identificationImage = null;
