@@ -35,7 +35,8 @@ class WalletMoneyAmountWidget extends StatelessWidget {
           child: InkWell(
               onTap: () {
                 if (walletController.walletTypeIndex == 1) {
-                  if (Get.find<SplashController>().config!.conversionStatus!) {
+                  if (Get.find<SplashController>().config?.conversionStatus ??
+                      false) {
                     showDialog(
                       barrierDismissible: false,
                       context: context,
@@ -80,9 +81,9 @@ class WalletMoneyAmountWidget extends StatelessWidget {
                             color: Get.isDarkMode
                                 ? Theme.of(context)
                                     .textTheme
-                                    .bodyMedium!
-                                    .color!
-                                    .withOpacity(0.9)
+                                    .bodyMedium
+                                    ?.color
+                                    ?.withOpacity(0.9)
                                 : null),
                       ),
                       Text(
@@ -95,9 +96,9 @@ class WalletMoneyAmountWidget extends StatelessWidget {
                             color: Get.isDarkMode
                                 ? Theme.of(context)
                                     .textTheme
-                                    .bodyMedium!
-                                    .color!
-                                    .withOpacity(0.8)
+                                    .bodyMedium
+                                    ?.color
+                                    ?.withOpacity(0.8)
                                 : null),
                       ),
                       const SizedBox(height: Dimensions.paddingSizeSmall),
@@ -124,13 +125,15 @@ class WalletMoneyAmountWidget extends StatelessWidget {
                                             : PriceConverter.convertPrice(
                                                 context,
                                                 (profileController
-                                                        .profileInfo!
-                                                        .wallet!
-                                                        .payableBalance! -
-                                                    profileController
-                                                        .profileInfo!
-                                                        .wallet!
-                                                        .receivableBalance!),
+                                                            .profileInfo
+                                                            ?.wallet
+                                                            ?.payableBalance ??
+                                                        0) -
+                                                    (profileController
+                                                            .profileInfo
+                                                            ?.wallet
+                                                            ?.receivableBalance ??
+                                                        0),
                                               ),
                                         style: textRobotoBold.copyWith(
                                           fontSize: Dimensions.fontSizeDefault,

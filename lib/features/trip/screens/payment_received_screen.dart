@@ -262,8 +262,10 @@ class _PaymentReceivedScreenState extends State<PaymentReceivedScreen>
                               subTitle: 'time'.tr,
                             ),
                             SummeryItem(
-                              title:
-                                  '${finalFareController.finalFare!.actualDistance} km',
+                              title: PriceConverter.convertDistance(
+                                  double.tryParse(finalFareController
+                                      .finalFare!.actualDistance
+                                      .toString())),
                               subTitle: 'distance'.tr,
                             ),
                           ]),

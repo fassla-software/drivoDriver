@@ -44,14 +44,39 @@ class SimpleTripMapController extends GetxController {
 
   String get remainingDistance {
     if (_mainRoutePoints.isEmpty) return 'Calculating...';
-    // Calculate distance logic here
-    return '5.2 km';
+    double distance = _calculateTotalRouteDistance();
+    if (distance >= 1000) {
+      return '${(distance / 1000).toStringAsFixed(1)} km';
+    }
+    return '${distance.toInt()} m';
   }
 
   String get estimatedTimeToDestination {
     if (_mainRoutePoints.isEmpty) return 'Calculating...';
-    // Calculate ETA logic here
-    return '15 min';
+    double distance = _calculateTotalRouteDistance();
+    // Assume average speed of 40 km/h in city traffic
+    double hours = (distance / 1000) / 40;
+    int minutes = (hours * 60).round();
+    if (minutes < 1) return '< 1 min';
+    if (minutes >= 60) {
+      return '${(minutes / 60).floor()} hr ${minutes % 60} min';
+    }
+    return '$minutes min';
+  }
+
+  /// Calculate total route distance from polyline points in meters
+  double _calculateTotalRouteDistance() {
+    if (_mainRoutePoints.length < 2) return 0.0;
+    double totalDistance = 0.0;
+    for (int i = 0; i < _mainRoutePoints.length - 1; i++) {
+      totalDistance += Geolocator.distanceBetween(
+        _mainRoutePoints[i].latitude,
+        _mainRoutePoints[i].longitude,
+        _mainRoutePoints[i + 1].latitude,
+        _mainRoutePoints[i + 1].longitude,
+      );
+    }
+    return totalDistance;
   }
 
   String get polylineSource {
