@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../util/dimensions.dart';
 import '../../../util/styles.dart';
@@ -92,6 +93,31 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                                   controller.startTimeController,
                                   () => _selectDateTime(controller),
                                 ),
+                              ],
+                            ),
+
+                            // Recurrence Section
+                            _buildSectionCard(
+                              title: 'recurrence'.tr,
+                              icon: Icons.repeat,
+                              children: [
+                                _buildEnhancedDropdown(
+                                  'type'.tr,
+                                  controller.recurrenceType,
+                                  ['once', 'repeated'],
+                                  controller.setRecurrenceType,
+                                  Icons.repeat,
+                                ),
+                                if (controller.recurrenceType == 'repeated')
+                                  _buildEnhancedDateTimeField(
+                                    'select_dates'.tr,
+                                    TextEditingController(
+                                      text: controller.selectedDates.isEmpty
+                                          ? ''
+                                          : '${controller.selectedDates.length} ${'dates_selected'.tr}',
+                                    ),
+                                    () => _showMultiDatePicker(controller),
+                                  ),
                               ],
                             ),
 
@@ -1053,5 +1079,55 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
     if (controller.allowLuggage) features.add('allow_luggage'.tr);
 
     return features.isEmpty ? 'none'.tr : features.join(', ');
+  }
+
+  void _showMultiDatePicker(RegisterRouteController controller) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('select_dates'.tr),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: SfDateRangePicker(
+              selectionMode: DateRangePickerSelectionMode.multiple,
+              initialSelectedDates: controller.selectedDates,
+              minDate: DateTime.now(),
+              maxDate: DateTime.now().add(const Duration(days: 90)),
+              selectionColor: Theme.of(context).primaryColor,
+              todayHighlightColor: Theme.of(context).primaryColor,
+              startRangeSelectionColor: Theme.of(context).primaryColor,
+              endRangeSelectionColor: Theme.of(context).primaryColor,
+              rangeSelectionColor:
+                  Theme.of(context).primaryColor.withValues(alpha: 0.1),
+              headerStyle: DateRangePickerHeaderStyle(
+                textStyle: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              monthCellStyle: DateRangePickerMonthCellStyle(
+                todayTextStyle: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+                if (args.value is List<DateTime>) {
+                  controller.setSelectedDates(args.value);
+                }
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('ok'.tr),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

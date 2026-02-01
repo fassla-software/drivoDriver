@@ -19,6 +19,9 @@ class RegisterRouteRequestModel {
   final String vehicleId;
   final double price;
   final List<RestStopModel> restStops;
+  final String recurrenceType;
+  final List<String>? selectedDates;
+
   RegisterRouteRequestModel({
     required this.startLat,
     required this.startLng,
@@ -38,6 +41,8 @@ class RegisterRouteRequestModel {
     required this.vehicleId,
     required this.price,
     required this.restStops,
+    this.recurrenceType = 'once',
+    this.selectedDates,
   });
 
   Map<String, dynamic> toJson() {
@@ -60,6 +65,8 @@ class RegisterRouteRequestModel {
       'vehicle_id': vehicleId,
       'price': price,
       'rest_stops': restStops.map((stop) => stop.toJson()).toList(),
+      'recurrence_type': recurrenceType,
+      'selected_dates': recurrenceType == 'repeated' ? selectedDates : [],
     };
   }
 }

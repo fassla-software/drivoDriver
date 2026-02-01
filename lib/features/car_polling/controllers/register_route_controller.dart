@@ -130,12 +130,28 @@ class RegisterRouteController extends GetxController {
   final List<RestStopModel> _restStops = [];
   List<RestStopModel> get restStops => _restStops;
 
+  String _recurrenceType = 'once';
+  String get recurrenceType => _recurrenceType;
+
+  List<DateTime> _selectedDates = [];
+  List<DateTime> get selectedDates => _selectedDates;
+
   // Polyline encoding
   String _encodedPolyline = '';
   String get encodedPolyline => _encodedPolyline;
 
   void setRideType(String type) {
     _rideType = type;
+    update();
+  }
+
+  void setRecurrenceType(String type) {
+    _recurrenceType = type;
+    update();
+  }
+
+  void setSelectedDates(List<DateTime> dates) {
+    _selectedDates = dates;
     update();
   }
 
@@ -300,6 +316,12 @@ class RegisterRouteController extends GetxController {
       }
     }
 
+    // Validate recurrence dates
+    if (_recurrenceType == 'repeated' && _selectedDates.isEmpty) {
+      _showValidationError('please_select_dates_for_repeated_trip'.tr);
+      return false;
+    }
+
     return true;
   }
 
@@ -339,6 +361,10 @@ class RegisterRouteController extends GetxController {
 
     // Clear rest stops
     _restStops.clear();
+
+    // Reset recurrence
+    _recurrenceType = 'once';
+    _selectedDates.clear();
 
     update();
   }
@@ -421,6 +447,11 @@ class RegisterRouteController extends GetxController {
                                 .map((stop) =>
                                     '${stop['name']}: ${stop['lat']}, ${stop['lng']}')
                                 .toList()),
+                      _buildDataSection('📅 Recurrence', [
+                        'Type: ${data['recurrenceType']}',
+                        if (data['recurrenceType'] == 'repeated')
+                          'Dates: ${(data['selectedDates'] as List).length} selected',
+                      ]),
                       _buildDataSection('🗺️ Route Polyline', [
                         'Status: ${data['encodedPolyline'].isNotEmpty ? 'Generated' : 'Not generated'}',
                         'Length: ${data['encodedPolyline'].length} characters',
@@ -546,6 +577,11 @@ class RegisterRouteController extends GetxController {
         hasScreenEntertainment: _hasScreenEntertainment ? 1 : 0,
         allowLuggage: _allowLuggage ? 1 : 0,
         restStops: _restStops,
+        recurrenceType: _recurrenceType,
+        selectedDates: _selectedDates
+            .map((date) =>
+                "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}")
+            .toList(),
       );
 
       // Call the API service
@@ -696,6 +732,8 @@ class RegisterRouteController extends GetxController {
                 'lng': stop.lng,
               })
           .toList(),
+      'recurrenceType': _recurrenceType,
+      'selectedDates': _selectedDates.map((d) => d.toString()).toList(),
       'encodedPolyline': _encodedPolyline,
     };
   }

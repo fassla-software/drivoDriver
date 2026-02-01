@@ -950,5 +950,12 @@
   "location_access_description": "To provide you with the best service, we need access to your location. You can continue without setting a location or set your preferred location now.",
   "go_to_your_rider": "Go to your rider",
   "go_to_your_destination": "Go to your destination",
-  "not_activated": "Not subscribed ,\nTo activate your subscription, please Contact us on whatsapp : 01200924442"
+  "not_activated": "Not subscribed ,\nTo activate your subscription, please Contact us on whatsapp : 01200924442",
+  "recurrence": "Recurrence",
+  "type": "Type",
+  "repeated": "Repeated",
+  "once": "Once",
+  "select_dates": "Select Dates",
+  "dates_selected": "dates selected",
+  "please_select_dates_for_repeated_trip": "Please select dates for repeated trip"
 }
