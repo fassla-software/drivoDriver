@@ -22,7 +22,7 @@ class PassengerCoordinateModel {
 
     final model = PassengerCoordinateModel(
       type: json['type'],
-      passengerId: json['passenger_id'],
+      passengerId: json['passenger_id']?.toString(),
       pickupCoordinates: json['pickup_coordinates'] != null
           ? List<double>.from(json['pickup_coordinates'])
           : null,

@@ -57,6 +57,38 @@ class CurrentTripsRepository implements CurrentTripsRepositoryInterface {
   }
 
   @override
+  Future<Response> cancelTrip(int carpoolRouteId,
+      {String? cancellationType, String? date, String? reason}) async {
+    print(
+        '=== Repository: cancelTrip called with routeId: $carpoolRouteId, type: $cancellationType ===');
+
+    String url = AppConstants.cancelTripUri;
+    final Map<String, dynamic> body = {
+      'carpool_route_id': carpoolRouteId,
+    };
+
+    if (cancellationType != null) {
+      url = AppConstants.cancelRouteUri;
+      body['cancellation_type'] = cancellationType;
+      if (date != null) {
+        body['date'] = date;
+      }
+      if (reason != null) {
+        body['reason'] = reason;
+      }
+    }
+
+    print('=== Repository: API URL: $url ===');
+    print('=== Repository: Cancel trip request body: $body ===');
+
+    final response = await apiClient.postData(url, body);
+
+    print(
+        '=== Repository: Cancel trip response received with status: ${response.statusCode} ===');
+    return response;
+  }
+
+  @override
   Future add(value) {
     throw UnimplementedError();
   }

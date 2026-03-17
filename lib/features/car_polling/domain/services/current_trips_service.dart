@@ -20,4 +20,11 @@ class CurrentTripsService implements CurrentTripsServiceInterface {
   Future endTrip(int carpoolRouteId) {
     return currentTripsRepositoryInterface.endTrip(carpoolRouteId);
   }
+
+  @override
+  Future cancelTrip(int carpoolRouteId,
+      {String? cancellationType, String? date, String? reason}) {
+    return currentTripsRepositoryInterface.cancelTrip(carpoolRouteId,
+        cancellationType: cancellationType, date: date, reason: reason);
+  }
 }

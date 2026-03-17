@@ -49,9 +49,9 @@ class SimplePassengerModel {
       dropoffCoordinates: json['dropoff_coordinates'] != null
           ? List<double>.from(json['dropoff_coordinates'])
           : null,
-      phone: json['phone'],
-      email: json['email'],
-      carpoolTripId: json['carpool_trip_id'],
+      phone: json['phone']?.toString(),
+      email: json['email']?.toString(),
+      carpoolTripId: json['carpool_trip_id']?.toString(),
     );
   }
 

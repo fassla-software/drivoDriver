@@ -143,6 +143,8 @@ class AppConstants {
   static const String startTripUri = '/api/driver/start-trip';
   static const String endTripUri = '/api/driver/trip-requests/end-by-route';
   static const String reviewPassengerUri = '/api/driver/review';
+  static const String cancelTripUri = '/api/driver/cancel-trip';
+  static const String cancelRouteUri = '/api/driver/cancel-route';
 
   static const String rideRequest = '/api/customer/ride/create';
   static const String tripAcceptOrReject = '/api/driver/ride/trip-action';

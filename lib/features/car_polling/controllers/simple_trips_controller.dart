@@ -14,6 +14,16 @@ class SimpleTripsController extends GetxController implements GetxService {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  void _showSafeSnackBar(String message, {bool isError = true}) {
+    if (Get.context == null) return;
+    ScaffoldMessenger.of(Get.context!).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: isError ? Colors.red : Colors.green,
+      duration: const Duration(seconds: 3),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
   bool _isRefreshing = false;
   bool get isRefreshing => _isRefreshing;
 
@@ -121,6 +131,11 @@ class SimpleTripsController extends GetxController implements GetxService {
     return _trips.where((trip) => trip.tripStatus == 'completed').toList();
   }
 
+  /// Get cancelled trips
+  List<SimpleTripModel> get cancelledTrips {
+    return _trips.where((trip) => trip.tripStatus == 'cancelled').toList();
+  }
+
   /// Get trip status color
   Color getTripStatusColor(String status) {
     switch (status) {
@@ -130,6 +145,8 @@ class SimpleTripsController extends GetxController implements GetxService {
         return Colors.green;
       case 'completed':
         return Colors.blue;
+      case 'cancelled':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -144,6 +161,8 @@ class SimpleTripsController extends GetxController implements GetxService {
         return 'ongoing'.tr;
       case 'completed':
         return 'completed'.tr;
+      case 'cancelled':
+        return 'cancelled'.tr;
       default:
         return 'unknown'.tr;
     }
@@ -170,12 +189,7 @@ class SimpleTripsController extends GetxController implements GetxService {
       print('=== Start Trip API Response - Body: ${response.body} ===');
 
       if (response.statusCode == 200) {
-        Get.showSnackbar(GetSnackBar(
-          title: 'success'.tr,
-          message: 'trip_started_successfully'.tr,
-          duration: const Duration(seconds: 2),
-          backgroundColor: Colors.green,
-        ));
+        _showSafeSnackBar('trip_started_successfully'.tr, isError: false);
 
         // Refresh the trips list
         await getCurrentTrips(isRefresh: true);
@@ -188,28 +202,38 @@ class SimpleTripsController extends GetxController implements GetxService {
           Get.to(() => SimpleTripMapScreen(trip: updatedTrip));
         }
       } else {
-        String errorMessage = 'failed_to_start_trip'.tr;
-        if (response.body != null && response.body['message'] != null) {
-          errorMessage = response.body['message'];
+        if (response.statusCode == 403) {
+          String errorMessage = 'failed_to_start_trip'.tr;
+          if (response.body != null) {
+            if (response.body['data'] != null &&
+                response.body['data']['message'] != null) {
+              errorMessage = response.body['data']['message'];
+            } else if (response.body['message'] != null) {
+              errorMessage = response.body['message'];
+            }
+          }
+
+          _showSafeSnackBar(errorMessage);
         }
+        if (response.statusCode == 401) {
+          ApiChecker.checkApi(response);
+        } else {
+          String errorMessage = 'failed_to_start_trip'.tr;
+          if (response.body != null) {
+            if (response.body['data'] != null &&
+                response.body['data']['message'] != null) {
+              errorMessage = response.body['data']['message'];
+            } else if (response.body['message'] != null) {
+              errorMessage = response.body['message'];
+            }
+          }
 
-        Get.showSnackbar(GetSnackBar(
-          title: 'error'.tr,
-          message: errorMessage,
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ));
-
-        ApiChecker.checkApi(response);
+          _showSafeSnackBar(errorMessage);
+        }
       }
     } catch (e) {
       print('=== Start Trip Error: $e ===');
-      Get.showSnackbar(GetSnackBar(
-        title: 'error'.tr,
-        message: 'failed_to_start_trip'.tr,
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.red,
-      ));
+      _showSafeSnackBar('failed_to_start_trip'.tr);
     } finally {
       _isStartingTrip = false;
       _startingTripRouteId = null;
@@ -238,38 +262,30 @@ class SimpleTripsController extends GetxController implements GetxService {
       print('=== End Trip API Response - Body: ${response.body} ===');
 
       if (response.statusCode == 200) {
-        Get.showSnackbar(GetSnackBar(
-          title: 'success'.tr,
-          message: 'trip_ended_successfully'.tr,
-          duration: const Duration(seconds: 2),
-          backgroundColor: Colors.green,
-        ));
+        _showSafeSnackBar('trip_ended_successfully'.tr, isError: false);
 
         // Refresh the trips list
         await getCurrentTrips(isRefresh: true);
       } else {
-        String errorMessage = 'failed_to_end_trip'.tr;
-        if (response.body != null && response.body['message'] != null) {
-          errorMessage = response.body['message'];
+        if (response.statusCode == 401) {
+          ApiChecker.checkApi(response);
+        } else {
+          String errorMessage = 'failed_to_end_trip'.tr;
+          if (response.body != null) {
+            if (response.body['data'] != null &&
+                response.body['data']['message'] != null) {
+              errorMessage = response.body['data']['message'];
+            } else if (response.body['message'] != null) {
+              errorMessage = response.body['message'];
+            }
+          }
+
+          _showSafeSnackBar(errorMessage);
         }
-
-        Get.showSnackbar(GetSnackBar(
-          title: 'error'.tr,
-          message: errorMessage,
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ));
-
-        ApiChecker.checkApi(response);
       }
     } catch (e) {
       print('=== End Trip Error: $e ===');
-      Get.showSnackbar(GetSnackBar(
-        title: 'error'.tr,
-        message: 'failed_to_end_trip'.tr,
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.red,
-      ));
+      _showSafeSnackBar('failed_to_end_trip'.tr);
     } finally {
       _isEndingTrip = false;
       _endingTripRouteId = null;
@@ -280,6 +296,113 @@ class SimpleTripsController extends GetxController implements GetxService {
   /// Check if a specific trip is being ended
   bool isTripBeingEnded(int tripId) {
     return _isEndingTrip && _endingTripRouteId == tripId.toString();
+  }
+
+  bool _isCancellingTrip = false;
+  bool get isCancellingTrip => _isCancellingTrip;
+
+  String? _cancellingTripRouteId;
+  String? get cancellingTripRouteId => _cancellingTripRouteId;
+
+  /// Cancel a trip
+  Future<void> cancelTrip(int tripId,
+      {String? cancellationType, String? date, String? reason}) async {
+    _isCancellingTrip = true;
+    _cancellingTripRouteId = tripId.toString();
+    update();
+
+    try {
+      print(
+          '=== Cancelling trip for ID: $tripId, type: $cancellationType, date: $date ===');
+
+      Response response = await currentTripsServiceInterface.cancelTrip(tripId,
+          cancellationType: cancellationType, date: date, reason: reason);
+
+      print(
+          '=== Cancel Trip API Response - Status Code: ${response.statusCode} ===');
+      print('=== Cancel Trip API Response - Body: ${response.body} ===');
+
+      if (response.statusCode == 200) {
+        _showSafeSnackBar('trip_cancelled_successfully'.tr, isError: false);
+
+        // Refresh the trips list
+        await getCurrentTrips(isRefresh: true);
+
+        // check if we need to pop - only if not part of a multi-cancel loop or handled by caller
+        if (cancellationType == null || cancellationType == 'all_dates') {
+          if (Get.key.currentState?.canPop() ?? false) {
+            Get.back();
+          }
+        }
+      } else {
+        if (response.statusCode == 401) {
+          ApiChecker.checkApi(response);
+        } else {
+          String errorMessage = 'failed_to_cancel_trip'.tr;
+          if (response.body != null) {
+            if (response.body['data'] != null &&
+                response.body['data']['message'] != null) {
+              errorMessage = response.body['data']['message'];
+            } else if (response.body['message'] != null) {
+              errorMessage = response.body['message'];
+            }
+          }
+
+          _showSafeSnackBar(errorMessage);
+        }
+      }
+    } catch (e) {
+      print('=== Cancel Trip Error: $e ===');
+      _showSafeSnackBar('failed_to_cancel_trip'.tr);
+    } finally {
+      // If we are in a loop, we might not want to reset this immediately if we want to show loading state?
+      // But for simplicity, we reset it. The multi-cancel method should handle its own loading state or reuse this.
+      _isCancellingTrip = false;
+      _cancellingTripRouteId = null;
+      update();
+    }
+  }
+
+  /// Cancel multiple dates for a trip
+  Future<void> cancelTripDates(
+      int tripId, List<String> dates, String reason) async {
+    _isCancellingTrip = true;
+    _cancellingTripRouteId = tripId.toString();
+    update();
+
+    try {
+      for (String date in dates) {
+        print('=== Cancelling date: $date for trip ID: $tripId ===');
+        await currentTripsServiceInterface.cancelTrip(tripId,
+            cancellationType: 'single_date', date: date, reason: reason);
+      }
+      // We assume if loop completes without throwing, it's success.
+      // Ideally we should track individual successes but for now we follow simple requirement.
+      _showSafeSnackBar('trip_cancelled_successfully'.tr, isError: false);
+
+      await getCurrentTrips(isRefresh: true);
+      if (Get.key.currentState?.canPop() ?? false) {
+        Get.back();
+      }
+    } catch (e) {
+      print('=== Cancel Trip Dates Error: $e ===');
+      _showSafeSnackBar('failed_to_cancel_trip'.tr);
+    } finally {
+      _isCancellingTrip = false;
+      _cancellingTripRouteId = null;
+      update();
+    }
+  }
+
+  /// Cancel entire trip route
+  Future<void> cancelEntireTrip(int tripId, String reason) async {
+    await cancelTrip(tripId,
+        cancellationType: 'remaining_dates', reason: reason, date: null);
+  }
+
+  /// Check if a specific trip is being cancelled
+  bool isTripBeingCancelled(int tripId) {
+    return _isCancellingTrip && _cancellingTripRouteId == tripId.toString();
   }
 
   /// Clear all data

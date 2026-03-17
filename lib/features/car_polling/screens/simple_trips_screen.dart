@@ -8,6 +8,7 @@ import '../controllers/simple_trips_controller.dart';
 import '../domain/models/simple_trip_model.dart';
 import '../domain/models/simple_passenger_model.dart';
 import 'simple_trip_map_screen.dart';
+import 'trip_details_screen.dart';
 
 class SimpleTripsScreen extends StatefulWidget {
   const SimpleTripsScreen({super.key});
@@ -24,7 +25,7 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
 
     // Get or create the controller
     try {
@@ -129,6 +130,7 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
                           Tab(text: 'pending'.tr),
                           Tab(text: 'ongoing'.tr),
                           Tab(text: 'completed'.tr),
+                          Tab(text: 'cancelled'.tr),
                         ],
                       ),
                     ),
@@ -141,6 +143,7 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
                           _buildTripsListView(ctrl, ctrl.pendingTrips),
                           _buildTripsListView(ctrl, ctrl.ongoingTrips),
                           _buildTripsListView(ctrl, ctrl.completedTrips),
+                          _buildTripsListView(ctrl, ctrl.cancelledTrips),
                         ],
                       ),
                     ),
@@ -200,196 +203,135 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
   Widget _buildTripCard(
       SimpleTripsController controller, SimpleTripModel trip, int index) {
     return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Trip Header
-          Container(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-            decoration: BoxDecoration(
-              color: controller
-                  .getTripStatusColor(trip.tripStatus)
-                  .withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(Dimensions.paddingSizeDefault),
-                topRight: Radius.circular(Dimensions.paddingSizeDefault),
-              ),
+        margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'trip_id'.tr,
-                            style: textRegular.copyWith(
-                              fontSize: Dimensions.fontSizeSmall,
-                              color: Theme.of(context).hintColor,
-                            ),
-                          ),
-                          Text(
-                            ' #${trip.id}',
-                            style: textMedium.copyWith(
-                              fontSize: Dimensions.fontSizeSmall,
-                              color: Theme.of(context).primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule,
-                            size: 16,
-                            color: Theme.of(context).hintColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${trip.formattedStartDate} • ${trip.formattedStartTime}',
-                            style: textRegular.copyWith(
-                              fontSize: Dimensions.fontSizeSmall,
-                              color: Theme.of(context).hintColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+          ],
+        ),
+        child: InkWell(
+          onTap: () {
+            Get.to(() => TripDetailsScreen(trip: trip));
+          },
+          borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Trip Header
+              Container(
+                padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+                decoration: BoxDecoration(
+                  color: controller
+                      .getTripStatusColor(trip.tripStatus)
+                      .withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(Dimensions.paddingSizeDefault),
+                    topRight: Radius.circular(Dimensions.paddingSizeDefault),
                   ),
                 ),
-                const SizedBox(width: Dimensions.paddingSizeSmall),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Dimensions.paddingSizeSmall,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: controller.getTripStatusColor(trip.tripStatus),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    controller.getTripStatusDisplayText(trip.tripStatus),
-                    style: textMedium.copyWith(
-                      color: Colors.white,
-                      fontSize: Dimensions.fontSizeExtraSmall,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Route Information
-                _buildRouteSection(trip),
-
-                const SizedBox(height: Dimensions.paddingSizeDefault),
-
-                // Trip Details
-                _buildTripDetailsSection(controller, trip),
-
-                // Passengers Section
-                if (trip.passengers != null && trip.passengers!.isNotEmpty) ...[
-                  const SizedBox(height: Dimensions.paddingSizeDefault),
-                  _buildPassengersSection(trip),
-                ],
-
-                // Start Trip Button for Pending Trips
-                if (trip.tripStatus == 'pending') ...[
-                  const SizedBox(height: Dimensions.paddingSizeDefault),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: controller.isTripBeingStarted(trip.id ?? 0)
-                          ? null
-                          : () => controller.startTrip(trip.id ?? 0),
-                      icon: controller.isTripBeingStarted(trip.id ?? 0)
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'trip_id'.tr,
+                                style: textRegular.copyWith(
+                                  fontSize: Dimensions.fontSizeSmall,
+                                  color: Theme.of(context).hintColor,
+                                ),
                               ),
-                            )
-                          : const Icon(Icons.play_arrow, color: Colors.white),
-                      label: Text(
-                        controller.isTripBeingStarted(trip.id ?? 0)
-                            ? 'starting_trip'.tr
-                            : 'start_trip'.tr,
+                              Text(
+                                ' #${trip.id}',
+                                style: textMedium.copyWith(
+                                  fontSize: Dimensions.fontSizeSmall,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule,
+                                size: 16,
+                                color: Theme.of(context).hintColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${trip.formattedStartDate} • ${trip.formattedStartTime}',
+                                style: textRegular.copyWith(
+                                  fontSize: Dimensions.fontSizeSmall,
+                                  color: Theme.of(context).hintColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: Dimensions.paddingSizeSmall),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Dimensions.paddingSizeSmall,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: controller.getTripStatusColor(trip.tripStatus),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        controller.getTripStatusDisplayText(trip.tripStatus),
                         style: textMedium.copyWith(
                           color: Colors.white,
-                          fontSize: Dimensions.fontSizeDefault,
+                          fontSize: Dimensions.fontSizeExtraSmall,
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: Dimensions.paddingSizeDefault,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              Dimensions.paddingSizeSmall),
-                        ),
-                        elevation: 4,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
 
-                // Show Map Button for Ongoing Trips
-                if (trip.tripStatus == 'ongoing') ...[
-                  const SizedBox(height: Dimensions.paddingSizeDefault),
-                  Row(
-                    children: [
-                      // View Trip Button
-                      Expanded(
+              Padding(
+                padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Route Information
+                    _buildRouteSection(trip),
+
+                    const SizedBox(height: Dimensions.paddingSizeDefault),
+
+                    // Trip Details
+                    _buildTripDetailsSection(controller, trip),
+
+                    // Passengers Section
+                    if (trip.passengers != null &&
+                        trip.passengers!.isNotEmpty) ...[
+                      const SizedBox(height: Dimensions.paddingSizeDefault),
+                      _buildPassengersSection(trip),
+                    ],
+
+                    // Start Trip Button for Pending Trips
+                    if (trip.tripStatus == 'pending') ...[
+                      const SizedBox(height: Dimensions.paddingSizeDefault),
+                      SizedBox(
+                        width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: controller.isTripBeingEnded(trip.id ?? 0)
+                          onPressed: controller.isTripBeingStarted(trip.id ?? 0)
                               ? null
-                              : () {
-                                  print(
-                                      '=== Opening map for trip ID: ${trip.id} ===');
-                                  print(
-                                      '=== Trip passenger coordinates: ${trip.passengerCoordinates?.length ?? 0} ===');
-                                  print(
-                                      '=== Trip passengers: ${trip.passengers?.length ?? 0} ===');
-
-                                  if (trip.startCoordinates != null &&
-                                      trip.endCoordinates != null) {
-                                    Get.to(
-                                        () => SimpleTripMapScreen(trip: trip));
-                                  } else {
-                                    Get.showSnackbar(GetSnackBar(
-                                      title: 'خطأ',
-                                      message: 'لا توجد إحداثيات للمسار',
-                                      duration: const Duration(seconds: 2),
-                                      backgroundColor: Colors.red,
-                                    ));
-                                  }
-                                },
-                          icon: controller.isTripBeingEnded(trip.id ?? 0)
+                              : () => controller.startTrip(trip.id ?? 0),
+                          icon: controller.isTripBeingStarted(trip.id ?? 0)
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -399,60 +341,19 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
                                         Colors.white),
                                   ),
                                 )
-                              : const Icon(Icons.map, color: Colors.white),
+                              : const Icon(Icons.play_arrow,
+                                  color: Colors.white),
                           label: Text(
-                            controller.isTripBeingEnded(trip.id ?? 0)
-                                ? 'ending'.tr
-                                : 'show_map'.tr,
+                            controller.isTripBeingStarted(trip.id ?? 0)
+                                ? 'starting_trip'.tr
+                                : 'start_trip'.tr,
                             style: textMedium.copyWith(
                               color: Colors.white,
                               fontSize: Dimensions.fontSizeDefault,
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: Dimensions.paddingSizeDefault,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  Dimensions.paddingSizeSmall),
-                            ),
-                            elevation: 4,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: Dimensions.paddingSizeDefault),
-                      // End Trip Button
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: controller.isTripBeingEnded(trip.id ?? 0)
-                              ? null
-                              : () => _showEndTripConfirmationDialog(
-                                  controller, trip),
-                          icon: controller.isTripBeingEnded(trip.id ?? 0)
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
-                                  ),
-                                )
-                              : const Icon(Icons.stop, color: Colors.white),
-                          label: Text(
-                            controller.isTripBeingEnded(trip.id ?? 0)
-                                ? 'ending'.tr
-                                : 'end_trip'.tr,
-                            style: textMedium.copyWith(
-                              color: Colors.white,
-                              fontSize: Dimensions.fontSizeDefault,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
+                            backgroundColor: Theme.of(context).primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               vertical: Dimensions.paddingSizeDefault,
@@ -466,14 +367,127 @@ class _SimpleTripsScreenState extends State<SimpleTripsScreen>
                         ),
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
+
+                    // Show Map Button for Ongoing Trips
+                    if (trip.tripStatus == 'ongoing') ...[
+                      const SizedBox(height: Dimensions.paddingSizeDefault),
+                      Row(
+                        children: [
+                          // View Trip Button
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: controller
+                                      .isTripBeingEnded(trip.id ?? 0)
+                                  ? null
+                                  : () {
+                                      print(
+                                          '=== Opening map for trip ID: ${trip.id} ===');
+                                      print(
+                                          '=== Trip passenger coordinates: ${trip.passengerCoordinates?.length ?? 0} ===');
+                                      print(
+                                          '=== Trip passengers: ${trip.passengers?.length ?? 0} ===');
+
+                                      if (trip.startCoordinates != null &&
+                                          trip.endCoordinates != null) {
+                                        Get.to(() =>
+                                            SimpleTripMapScreen(trip: trip));
+                                      } else {
+                                        Get.showSnackbar(GetSnackBar(
+                                          title: 'خطأ',
+                                          message: 'لا توجد إحداثيات للمسار',
+                                          duration: const Duration(seconds: 2),
+                                          backgroundColor: Colors.red,
+                                        ));
+                                      }
+                                    },
+                              icon: controller.isTripBeingEnded(trip.id ?? 0)
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(Icons.map, color: Colors.white),
+                              label: Text(
+                                controller.isTripBeingEnded(trip.id ?? 0)
+                                    ? 'ending'.tr
+                                    : 'show_map'.tr,
+                                style: textMedium.copyWith(
+                                  color: Colors.white,
+                                  fontSize: Dimensions.fontSizeDefault,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: Dimensions.paddingSizeDefault,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimensions.paddingSizeSmall),
+                                ),
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: Dimensions.paddingSizeDefault),
+                          // End Trip Button
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  controller.isTripBeingEnded(trip.id ?? 0)
+                                      ? null
+                                      : () => _showEndTripConfirmationDialog(
+                                          controller, trip),
+                              icon: controller.isTripBeingEnded(trip.id ?? 0)
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(Icons.stop, color: Colors.white),
+                              label: Text(
+                                controller.isTripBeingEnded(trip.id ?? 0)
+                                    ? 'ending'.tr
+                                    : 'end_trip'.tr,
+                                style: textMedium.copyWith(
+                                  color: Colors.white,
+                                  fontSize: Dimensions.fontSizeDefault,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: Dimensions.paddingSizeDefault,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimensions.paddingSizeSmall),
+                                ),
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ));
   }
 
   Widget _buildRouteSection(SimpleTripModel trip) {

@@ -1,6 +1,27 @@
 import 'simple_passenger_model.dart';
 import 'passenger_coordinate_model.dart';
 
+class RepeatedDateModel {
+  String? date;
+  bool? isCancelled;
+
+  RepeatedDateModel({this.date, this.isCancelled});
+
+  factory RepeatedDateModel.fromJson(Map<String, dynamic> json) {
+    return RepeatedDateModel(
+      date: json['date']?.toString(),
+      isCancelled: json['is_cancelled'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date,
+      'is_cancelled': isCancelled,
+    };
+  }
+}
+
 class SimpleTripModel {
   int? id;
   String? name;
@@ -14,6 +35,7 @@ class SimpleTripModel {
   bool? hasScreenEntertainment;
   bool? hasMusic;
   bool? allowLuggage;
+  bool? isCancelled;
   String? startDay;
   String? startHour;
   String? startAddress;
@@ -30,6 +52,8 @@ class SimpleTripModel {
   String? vehicleName;
   int? passengersCount;
   String? encodedPolyline;
+  String? tripType;
+  List<RepeatedDateModel>? tripDates;
   List<PassengerCoordinateModel>? passengerCoordinates;
   List<SimplePassengerModel>? passengers;
 
@@ -62,6 +86,9 @@ class SimpleTripModel {
     this.vehicleName,
     this.passengersCount,
     this.encodedPolyline,
+    this.tripType,
+    this.isCancelled,
+    this.tripDates,
     this.passengerCoordinates,
     this.passengers,
   });
@@ -69,37 +96,44 @@ class SimpleTripModel {
   factory SimpleTripModel.fromJson(Map<String, dynamic> json) {
     return SimpleTripModel(
       id: json['id'],
-      name: json['name'],
-      profileImage: json['profile_image'],
+      name: json['name']?.toString(),
+      profileImage: json['profile_image']?.toString(),
       seats: json['seats'],
       isSmokingAllowed: json['is_smoking_allowed'],
       isAc: json['is_ac'],
-      allowedGender: json['allowed_gender'],
+      isCancelled: json['is_cancelled'],
+      allowedGender: json['allowed_gender']?.toString(),
       allowedAgeMin: json['allowed_age_min'],
       allowedAgeMax: json['allowed_age_max'],
       hasScreenEntertainment: json['has_screen_entertainment'],
       hasMusic: json['has_music'],
       allowLuggage: json['allow_luggage'],
-      startDay: json['start_day'],
-      startHour: json['start_hour'],
-      startAddress: json['start_address'],
+      startDay: json['start_day']?.toString(),
+      startHour: json['start_hour']?.toString(),
+      startAddress: json['start_address']?.toString(),
+      tripType: json['recurrence_type']?.toString(),
+      tripDates: json['repeated_dates'] != null
+          ? (json['repeated_dates'] as List)
+              .map((item) => RepeatedDateModel.fromJson(item))
+              .toList()
+          : null,
       startCoordinates: json['start_coordinates'] != null
           ? List<double>.from(json['start_coordinates'])
           : null,
-      startTime: json['start_time'],
-      endTime: json['end_time'],
+      startTime: json['start_time']?.toString(),
+      endTime: json['end_time']?.toString(),
       endCoordinates: json['end_coordinates'] != null
           ? List<double>.from(json['end_coordinates'])
           : null,
       price: json['price']?.toDouble(),
       availableSeats: json['available_seats'],
-      startMeridiem: json['start_meridiem'],
-      endMeridiem: json['end_meridiem'],
-      endAddress: json['end_address'],
+      startMeridiem: json['start_meridiem']?.toString(),
+      endMeridiem: json['end_meridiem']?.toString(),
+      endAddress: json['end_address']?.toString(),
       isTripStarted: json['is_trip_started'],
-      vehicleName: json['vehicle_name'],
+      vehicleName: json['vehicle_name']?.toString(),
       passengersCount: json['passengers_count'],
-      encodedPolyline: json['encoded_polyline'],
+      encodedPolyline: json['encoded_polyline']?.toString(),
       // Debug passenger coordinates
       passengerCoordinates: (() {
         print(
@@ -154,12 +188,16 @@ class SimpleTripModel {
       'passenger_coordinates':
           passengerCoordinates?.map((item) => item.toJson()).toList(),
       'passengers': passengers?.map((item) => item.toJson()).toList(),
+      'recurrence_type': tripType,
+      'repeated_dates': tripDates?.map((item) => item.toJson()).toList(),
     };
   }
 
   // Helper methods
   String get tripStatus {
-    if (startTime != null &&
+    if (isCancelled == true) {
+      return 'cancelled';
+    } else if (startTime != null &&
         (endTime == null || endTime!.isEmpty) &&
         (isTripStarted == 0 || isTripStarted == null)) {
       return 'pending';
@@ -228,8 +266,8 @@ class SimpleTripsResponseModel {
       responseCode: json['response_code'],
       message: json['message'],
       totalSize: json['total_size'],
-      limit: json['limit'],
-      offset: json['offset'],
+      limit: json['limit']?.toString(),
+      offset: json['offset']?.toString(),
       data: json['data'] != null
           ? (json['data'] as List)
               .map((item) => SimpleTripModel.fromJson(item))
