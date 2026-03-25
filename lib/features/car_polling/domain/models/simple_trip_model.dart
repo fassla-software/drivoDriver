@@ -141,9 +141,9 @@ class SimpleTripModel {
         if (json['passenger_coordinates'] != null) {
           final list = json['passenger_coordinates'] as List;
           print('=== Passenger coordinates list length: ${list.length} ===');
-          return list
+          return (list
               .map((item) => PassengerCoordinateModel.fromJson(item))
-              .toList();
+              .toList());
         }
         return null;
       })(),

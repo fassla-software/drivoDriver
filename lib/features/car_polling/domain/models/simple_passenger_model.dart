@@ -11,6 +11,7 @@ class SimplePassengerModel {
   String? pickupAddress;
   String? dropoffAddress;
   List<double>? pickupCoordinates;
+  List<double>? closestPickupPoint;
   List<double>? dropoffCoordinates;
   String? phone;
   String? email;
@@ -21,6 +22,7 @@ class SimplePassengerModel {
     this.name,
     this.profileImage,
     this.seatsCount,
+    this.closestPickupPoint,
     this.fare,
     this.status,
     this.pickupAddress,
@@ -45,6 +47,9 @@ class SimplePassengerModel {
       dropoffAddress: json['dropoff_address'],
       pickupCoordinates: json['pickup_coordinates'] != null
           ? List<double>.from(json['pickup_coordinates'])
+          : null,
+      closestPickupPoint: json['closest_pickup_point'] != null
+          ? List<double>.from(json['closest_pickup_point'])
           : null,
       dropoffCoordinates: json['dropoff_coordinates'] != null
           ? List<double>.from(json['dropoff_coordinates'])

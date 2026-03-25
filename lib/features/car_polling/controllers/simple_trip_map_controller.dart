@@ -227,9 +227,9 @@ class SimpleTripMapController extends GetxController {
         Marker(
           markerId: const MarkerId('start'),
           position: LatLng(
-              trip.startCoordinates![1],
+              trip.startCoordinates![0],
               trip.startCoordinates![
-                  0]), // [longitude, latitude] -> (latitude, longitude)
+                  1]), // [longitude, latitude] -> (latitude, longitude)
           infoWindow: InfoWindow(
             title: 'Start',
             snippet: trip.startAddress ?? 'Start location',
@@ -246,9 +246,9 @@ class SimpleTripMapController extends GetxController {
         Marker(
           markerId: const MarkerId('end'),
           position: LatLng(
-              trip.endCoordinates![1],
+              trip.endCoordinates![0],
               trip.endCoordinates![
-                  0]), // [longitude, latitude] -> (latitude, longitude)
+                  1]), // [longitude, latitude] -> (latitude, longitude)
           infoWindow: InfoWindow(
             title: 'End',
             snippet: trip.endAddress ?? 'End location',

@@ -4,6 +4,7 @@ class PassengerCoordinateModel {
   String? type; // pickup or dropoff
   String? passengerId;
   List<double>? pickupCoordinates;
+  List<double>? closestCoordinates;
   List<double>? dropoffCoordinates;
   String? address;
 
@@ -13,6 +14,7 @@ class PassengerCoordinateModel {
     this.pickupCoordinates,
     this.dropoffCoordinates,
     this.address,
+    this.closestCoordinates,
   });
 
   factory PassengerCoordinateModel.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,9 @@ class PassengerCoordinateModel {
       passengerId: json['passenger_id']?.toString(),
       pickupCoordinates: json['pickup_coordinates'] != null
           ? List<double>.from(json['pickup_coordinates'])
+          : null,
+      closestCoordinates: json['closest_pickup_point'] != null
+          ? List<double>.from(json['closest_pickup_point'])
           : null,
       dropoffCoordinates: json['dropoff_coordinates'] != null
           ? List<double>.from(json['dropoff_coordinates'])
@@ -56,7 +61,7 @@ class PassengerCoordinateModel {
     print('=== Dropoff coordinates: $dropoffCoordinates ===');
 
     if (type == 'pickup') {
-      return pickupCoordinates;
+      return closestCoordinates;
     } else if (type == 'dropoff') {
       return dropoffCoordinates;
     }
