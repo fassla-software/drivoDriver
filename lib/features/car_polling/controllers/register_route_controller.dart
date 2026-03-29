@@ -818,7 +818,7 @@ class RegisterRouteController extends GetxController {
       double startLat, double startLng, double endLat, double endLng) async {
     try {
       // Google Maps API key (you should use your own key)
-      const String apiKey = 'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo';
+      const String apiKey = 'AIzaSyAxbSlJiU3JKv7zdfm3GL7dFsEeu495tbs';
 
       // Build waypoints string for rest stops
       String waypoints = '';

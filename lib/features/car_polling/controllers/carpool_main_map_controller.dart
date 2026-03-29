@@ -327,8 +327,8 @@ class CarpoolMainMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId('start'),
-          position: LatLng(carpoolTrip.startCoordinates![1],
-              carpoolTrip.startCoordinates![0]),
+          position: LatLng(carpoolTrip.startCoordinates![0],
+              carpoolTrip.startCoordinates![1]),
           infoWindow: InfoWindow(
             title: 'Start',
             snippet: carpoolTrip.startAddress ?? 'Trip start location',
@@ -346,7 +346,7 @@ class CarpoolMainMapController extends GetxController {
         Marker(
           markerId: const MarkerId('end'),
           position: LatLng(
-              carpoolTrip.endCoordinates![1], carpoolTrip.endCoordinates![0]),
+              carpoolTrip.endCoordinates![0], carpoolTrip.endCoordinates![1]),
           infoWindow: InfoWindow(
             title: 'End',
             snippet: carpoolTrip.endAddress ?? 'Trip end location',
@@ -549,12 +549,55 @@ class CarpoolMainMapController extends GetxController {
       print('=== Main route polyline added successfully ===');
       print(
           '=== Polyline points: ${_mainRoutePoints.take(3).map((p) => '${p.latitude.toStringAsFixed(4)}, ${p.longitude.toStringAsFixed(4)}').join(' -> ')} ===');
+
+      _updateStartEndMarkersFromRoute();
     } else {
       print('=== No route points to create polyline ===');
     }
 
     print('=== Total polylines: ${_polylines.length} ===');
     update();
+  }
+
+  void _updateStartEndMarkersFromRoute() {
+    if (_mainRoutePoints.isEmpty) {
+      return;
+    }
+
+    final LatLng startPoint = _mainRoutePoints.first;
+    final LatLng endPoint = _mainRoutePoints.last;
+
+    _markers.removeWhere(
+        (m) => m.markerId.value == 'start' || m.markerId.value == 'end');
+
+    // Re-create start marker at first polyline point
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('start'),
+        position: startPoint,
+        infoWindow: InfoWindow(
+          title: 'Start',
+          snippet: carpoolTrip.startAddress ?? 'Trip start location',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      ),
+    );
+
+    // Re-create end marker at last polyline point
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('end'),
+        position: endPoint,
+        infoWindow: InfoWindow(
+          title: 'End',
+          snippet: carpoolTrip.endAddress ?? 'Trip end location',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ),
+    );
+
+    print(
+        '=== Updated start/end markers from polyline: start=$startPoint end=$endPoint ===');
   }
 
   void _fitMarkersOnMap() {
@@ -623,10 +666,10 @@ class CarpoolMainMapController extends GetxController {
   void openInGoogleMaps() async {
     if (carpoolTrip.startCoordinates != null &&
         carpoolTrip.endCoordinates != null) {
-      final startLat = carpoolTrip.startCoordinates![1];
-      final startLng = carpoolTrip.startCoordinates![0];
-      final endLat = carpoolTrip.endCoordinates![1];
-      final endLng = carpoolTrip.endCoordinates![0];
+      final startLat = carpoolTrip.startCoordinates![0];
+      final startLng = carpoolTrip.startCoordinates![1];
+      final endLat = carpoolTrip.endCoordinates![0];
+      final endLng = carpoolTrip.endCoordinates![1];
 
       final url =
           'https://www.google.com/maps/dir/?api=1&origin=$startLat,$startLng&destination=$endLat,$endLng&travelmode=driving';

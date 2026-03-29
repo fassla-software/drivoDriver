@@ -88,7 +88,7 @@ class SimpleTripMapController extends GetxController {
 
   // أضف متغير لمفتاح Google Maps Directions API
   // static const String googleMapsApiKey =
-  //     'AIzaSyBEBg6ItImxrxhsGbv7G9KNyvy1gr2MGwo'; // ضع مفتاحك هنا
+  //     'AIzaSyAxbSlJiU3JKv7zdfm3GL7dFsEeu495tbs'; // ضع مفتاحك هنا
 
   /// جلب مسار القيادة الحقيقي من Google Directions API
   // Future<List<LatLng>> getRoutePolyline(List<LatLng> points) async {
@@ -400,11 +400,55 @@ class SimpleTripMapController extends GetxController {
         ),
       );
       print('=== Polyline added successfully ===');
+
+      _updateStartEndMarkersFromRoute();
     } else {
       print('=== No route points to create polyline ===');
     }
 
     print('=== Total polylines: ${_polylines.length} ===');
+    update();
+  }
+
+  void _updateStartEndMarkersFromRoute() {
+    if (_mainRoutePoints.isEmpty) {
+      return;
+    }
+
+    final LatLng startPoint = _mainRoutePoints.first;
+    final LatLng endPoint = _mainRoutePoints.last;
+
+    _markers.removeWhere((m) =>
+        m.markerId.value == 'start' || m.markerId.value == 'end');
+
+    // Re-create start marker at first polyline point
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('start'),
+        position: startPoint,
+        infoWindow: InfoWindow(
+          title: 'Start',
+          snippet: trip.startAddress ?? 'Start location',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      ),
+    );
+
+    // Re-create end marker at last polyline point
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('end'),
+        position: endPoint,
+        infoWindow: InfoWindow(
+          title: 'End',
+          snippet: trip.endAddress ?? 'End location',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ),
+    );
+
+    print(
+        '=== Updated start/end markers from polyline route: start=$startPoint end=$endPoint ===');
     update();
   }
 
@@ -512,19 +556,44 @@ class SimpleTripMapController extends GetxController {
           trip.startCoordinates!.length >= 2 &&
           trip.endCoordinates!.length >= 2) {
         String startCoords =
-            '${trip.startCoordinates![1]},${trip.startCoordinates![0]}'; // [longitude, latitude] -> (latitude, longitude)
+            '${trip.startCoordinates![0]},${trip.startCoordinates![1]}';
         String endCoords =
-            '${trip.endCoordinates![1]},${trip.endCoordinates![0]}'; // [longitude, latitude] -> (latitude, longitude)
+            '${trip.endCoordinates![0]},${trip.endCoordinates![1]}';
 
-        String url = 'https://www.google.com/maps/dir/$startCoords/$endCoords';
+        Uri googleMapsUri = Uri.parse(
+            'https://www.google.com/maps/dir/$startCoords/$endCoords');
 
-        if (await canLaunchUrl(Uri.parse(url))) {
-          await launchUrl(
-            Uri.parse(url),
+        print('=== openInGoogleMaps startUri: $googleMapsUri ===');
+
+        bool launched = false;
+
+        if (await canLaunchUrl(googleMapsUri)) {
+          launched = await launchUrl(
+            googleMapsUri,
             mode: LaunchMode.externalApplication,
           );
-        } else {
-          throw Exception('Could not launch Google Maps');
+          print('=== openInGoogleMaps launched googleMapsUri: $launched ===');
+        }
+
+        if (!launched) {
+          Uri fallbackUri = Uri.parse(
+              'https://www.google.com/maps/search/?api=1&query=$startCoords');
+          print('=== openInGoogleMaps fallbackUri: $fallbackUri ===');
+
+          if (await canLaunchUrl(fallbackUri)) {
+            launched = await launchUrl(
+              fallbackUri,
+              mode: LaunchMode.externalApplication,
+            );
+            print('=== openInGoogleMaps launched fallbackUri: $launched ===');
+          }
+        }
+
+        if (!launched) {
+          String errorMessage =
+              'Could not launch Google Maps URL. Please install Google Maps or open browser manually.';
+          print('=== openInGoogleMaps failed: $errorMessage ===');
+          throw Exception(errorMessage);
         }
       } else {
         Get.showSnackbar(GetSnackBar(
@@ -538,8 +607,8 @@ class SimpleTripMapController extends GetxController {
       print('=== Error opening Google Maps: $e ===');
       Get.showSnackbar(GetSnackBar(
         title: 'error'.tr,
-        message: 'failed_to_open_google_maps'.tr,
-        duration: const Duration(seconds: 2),
+        message: '${'failed_to_open_google_maps'.tr}: ${e.toString()}',
+        duration: const Duration(seconds: 3),
         backgroundColor: Colors.red,
       ));
     }
