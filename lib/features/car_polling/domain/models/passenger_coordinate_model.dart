@@ -70,7 +70,8 @@ class PassengerCoordinateModel {
 
   bool get hasValidCoordinates {
     if (type == 'pickup') {
-      return pickupCoordinates != null && pickupCoordinates!.length >= 2;
+      final coords = closestCoordinates ?? pickupCoordinates;
+      return coords != null && coords.length >= 2;
     } else if (type == 'dropoff') {
       return dropoffCoordinates != null && dropoffCoordinates!.length >= 2;
     }

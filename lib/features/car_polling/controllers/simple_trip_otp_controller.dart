@@ -36,6 +36,8 @@ class SimpleTripOtpController extends GetxController {
     if (onShowSnackBar != null) {
       onShowSnackBar!(
         message,
+                            duration: const Duration(seconds: 2),
+
         isError ? Colors.red : Colors.green,
         icon: isError ? Icons.error_outline : Icons.check_circle,
       );
@@ -98,7 +100,7 @@ class SimpleTripOtpController extends GetxController {
             isSuccess = responseBody.contains("default_store_200") ||
                 responseBody.contains("default_200") ||
                 responseBody.contains("200") ||
-                responseBody.contains("Successfully added");
+                responseBody.contains("Successfully added".tr);
           }
         } catch (e) {
           print('=== Error accessing response body: $e ===');
@@ -107,7 +109,7 @@ class SimpleTripOtpController extends GetxController {
           isSuccess = responseString.contains("default_store_200") ||
               responseString.contains("default_200") ||
               responseString.contains("200") ||
-              responseString.contains("Successfully added");
+              responseString.contains("Successfully added".tr);
         }
       }
 

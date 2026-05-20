@@ -26,6 +26,8 @@ import 'package:ride_sharing_user_app/helper/display_helper.dart';
 import 'package:ride_sharing_user_app/helper/home_screen_helper.dart';
 import 'package:ride_sharing_user_app/localization/localization_controller.dart';
 import 'package:ride_sharing_user_app/util/dimensions.dart';
+import 'package:ride_sharing_user_app/features/home/controllers/banner_controller.dart';
+import 'package:ride_sharing_user_app/features/home/widgets/banner_view.dart';
 import 'package:ride_sharing_user_app/util/images.dart';
 import 'package:ride_sharing_user_app/util/styles.dart';
 
@@ -35,8 +37,8 @@ class HomeMenu extends GetView<ProfileController> {
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ProfileController>(
-      builder: (_) => ZoomDrawer(
-        controller: _.zoomDrawerController,
+      builder: (profileController) => ZoomDrawer(
+        controller: profileController.zoomDrawerController,
         menuScreen: const ProfileMenuScreen(),
         mainScreen: const HomeScreen(),
         borderRadius: 24.0,
@@ -194,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Get.find<ProfileController>().getCategoryList(1);
     Get.find<ProfileController>().getProfileInfo();
     Get.find<ProfileController>().getDailyLog();
+    Get.find<BannerController>().getBannerList();
 
     loadOngoingList();
 
@@ -253,8 +256,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return RefreshIndicator(
       onRefresh: () async {
         Get.find<ProfileController>().getProfileInfo();
-String? fcmToken = await FirebaseMessaging.instance.getToken();
-print('FCM Token: $fcmToken');
+        Get.find<BannerController>().getBannerList();
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        debugPrint('FCM Token: $fcmToken');
       },
       child: Scaffold(
         body: Container(
@@ -345,6 +349,7 @@ print('FCM Token: $fcmToken');
                                             CrossAxisAlignment.start,
                                         children: [
                                           const SizedBox(height: 80.0),
+                                          const BannerView(),
 
                                           // بطاقة الحالة
                                           if (profileController

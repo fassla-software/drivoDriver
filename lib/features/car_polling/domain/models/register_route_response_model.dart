@@ -12,10 +12,21 @@ class RegisterRouteResponseModel {
   });
 
   factory RegisterRouteResponseModel.fromJson(Map<String, dynamic> json) {
+    String? parsedRouteId;
+    if (json['route_id'] != null) {
+      parsedRouteId = json['route_id'].toString();
+    } else if (json['data'] != null && json['data']['route_id'] != null) {
+      parsedRouteId = json['data']['route_id'].toString();
+    }
+
+    final bool isSuccess = json['success'] ??
+        (json['response_code'] == 'default_store_200') ??
+        false;
+
     return RegisterRouteResponseModel(
-      success: json['success'] ?? false,
+      success: isSuccess,
       message: json['message'] ?? '',
-      routeId: json['route_id'],
+      routeId: parsedRouteId,
       data: json['data'],
     );
   }

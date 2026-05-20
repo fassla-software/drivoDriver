@@ -16,6 +16,8 @@ class AppConstants {
   /// Flutter SDK 3.24.0
   static const String configUri = '/api/driver/configuration';
   static const String driverConfigurationUri = '/api/driver/configuration';
+  static const String bannerUri = '/api/driver/banner/list?limit=100&offset=1';
+  static const String bannerCountUpdate = '/api/driver/banner/update-redirection-count';
   static const String registration = '/api/driver/auth/registration';
   static const String loginUri = '/api/driver/auth/login';
   static const String logout = '/api/user/logout';
@@ -138,6 +140,7 @@ class AppConstants {
       '/api/driver/config/predefined-question-answer-list';
   static const String registerRouteUri = '/api/driver/register-route';
   static const String carpoolRoutesUri = '/api/driver/carpool-routes';
+  static const String boardingPointsUri = '/api/carpool/boarding-points';
   static const String currentTripsWithPassengersUri =
       '/api/driver/current-trips-with-passengers';
   static const String startTripUri = '/api/driver/start-trip';

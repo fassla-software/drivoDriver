@@ -11,6 +11,9 @@ class EnhancedCoordinateWidget extends StatefulWidget {
   final TextEditingController lngController;
   final IconData icon;
   final Color? iconColor;
+  final bool compactBlueStyle;
+  final Color? fieldColor;
+  final VoidCallback? onLocationChanged;
 
   const EnhancedCoordinateWidget({
     super.key,
@@ -19,6 +22,9 @@ class EnhancedCoordinateWidget extends StatefulWidget {
     required this.lngController,
     required this.icon,
     this.iconColor,
+    this.compactBlueStyle = false,
+    this.fieldColor,
+    this.onLocationChanged,
   });
 
   @override
@@ -61,6 +67,7 @@ class _EnhancedCoordinateWidgetState extends State<EnhancedCoordinateWidget> {
 
       widget.latController.text = coordinates.latitude.toStringAsFixed(6);
       widget.lngController.text = coordinates.longitude.toStringAsFixed(6);
+      widget.onLocationChanged?.call();
     }
   }
 
@@ -72,10 +79,16 @@ class _EnhancedCoordinateWidgetState extends State<EnhancedCoordinateWidget> {
     widget.lngController.clear();
   }
 
+  static const Color defaultFieldBlue = Color(0xFFA9D0F5);
+
   @override
   Widget build(BuildContext context) {
-    bool hasCoordinates = widget.latController.text.isNotEmpty &&
+    final hasCoordinates = widget.latController.text.isNotEmpty &&
         widget.lngController.text.isNotEmpty;
+
+    if (widget.compactBlueStyle) {
+      return _buildCompactBlueTile(context, hasCoordinates);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
@@ -301,6 +314,73 @@ class _EnhancedCoordinateWidgetState extends State<EnhancedCoordinateWidget> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactBlueTile(BuildContext context, bool hasCoordinates) {
+    final fieldColor = widget.fieldColor ?? defaultFieldBlue;
+    final subtitle = _selectedLocationName ??
+        (hasCoordinates ? 'location_selected'.tr : 'location'.tr);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openMapPicker(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: fieldColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: textMedium.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textRegular.copyWith(
+                          fontSize: 14,
+                          color: hasCoordinates
+                              ? const Color(0xFF1A1A1A)
+                              : const Color(0xFF5A5A5A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.map_outlined,
+                    color: widget.iconColor ?? const Color(0xFF2F6BFF),
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

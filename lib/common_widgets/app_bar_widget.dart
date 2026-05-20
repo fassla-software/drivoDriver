@@ -11,13 +11,23 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   final Function()? onBackPressed;
   final Function()? onTap;
   final bool regularAppbar;
-  const AppBarWidget({super.key, required this.title, this.showBackButton = true, this.onBackPressed, this.onTap,  this.regularAppbar = false});
+  final Color? backgroundColor;
+  const AppBarWidget({
+    super.key,
+    required this.title,
+    this.showBackButton = true,
+    this.onBackPressed,
+    this.onTap,
+    this.regularAppbar = false,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final barColor = backgroundColor ?? Theme.of(context).primaryColor;
     return Container(
       height: regularAppbar? 100 :GetPlatform.isAndroid? 120: 150,
-      color: Theme.of(context).primaryColor,
+      color: barColor,
       child: AppBar(
         title: Text(title, style: textSemiBold.copyWith(
           fontSize: Dimensions.fontSizeExtraLarge,
@@ -41,7 +51,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: barColor,
         elevation: 0,
       ),
     );

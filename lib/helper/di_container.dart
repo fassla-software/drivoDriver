@@ -99,6 +99,8 @@ import 'package:ride_sharing_user_app/features/car_polling/domain/repositories/c
 import 'package:ride_sharing_user_app/features/car_polling/domain/repositories/current_trips_repository_interface.dart';
 import 'package:ride_sharing_user_app/features/car_polling/domain/services/current_trips_service.dart';
 import 'package:ride_sharing_user_app/features/car_polling/domain/services/current_trips_service_interface.dart';
+import 'package:ride_sharing_user_app/features/home/domain/repositories/banner_repo.dart';
+import 'package:ride_sharing_user_app/features/home/controllers/banner_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
 
@@ -282,6 +284,7 @@ Future<Map<String, Map<String, String>>> init() async {
   Get.lazyPut(() => RegisterRouteRepository(apiClient: Get.find()));
   Get.lazyPut(() => CarpoolRoutesRepository(apiClient: Get.find()));
   Get.lazyPut(() => CurrentTripsRepository(apiClient: Get.find()));
+  Get.lazyPut(() => BannerRepo(apiClient: Get.find()));
 
   // Controller
   Get.lazyPut(() => SplashController(splashServiceInterface: Get.find()));
@@ -312,6 +315,7 @@ Future<Map<String, Map<String, String>>> init() async {
   // Use Get.put() instead of Get.lazyPut() to prevent disposal issues
   Get.put(CarpoolRoutesController(carpoolRoutesServiceInterface: Get.find()));
   Get.put(PassengerReviewController(passengerReviewService: Get.find()));
+  Get.lazyPut(() => BannerController(bannerRepo: Get.find()));
 
   // Retrieving localized data
   Map<String, Map<String, String>> languages = {};

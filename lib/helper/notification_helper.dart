@@ -25,6 +25,7 @@ import 'package:ride_sharing_user_app/features/review/screens/review_screen.dart
 import 'package:ride_sharing_user_app/features/trip/screens/trip_details_screen.dart';
 import 'package:ride_sharing_user_app/features/wallet/controllers/wallet_controller.dart';
 import 'package:ride_sharing_user_app/helper/display_helper.dart';
+import 'package:ride_sharing_user_app/helper/toaster.dart';
 import 'package:ride_sharing_user_app/util/app_constants.dart';
 import 'package:ride_sharing_user_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:ride_sharing_user_app/features/map/controllers/map_controller.dart';

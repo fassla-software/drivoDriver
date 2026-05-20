@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 import '../models/register_route_request_model.dart';
 import '../models/register_route_response_model.dart';
 import '../repositories/register_route_repository_interface.dart';
@@ -12,5 +13,10 @@ class RegisterRouteService implements RegisterRouteServiceInterface {
   Future<RegisterRouteResponseModel?> registerRoute(
       RegisterRouteRequestModel requestModel) async {
     return await registerRouteRepositoryInterface.registerRoute(requestModel);
+  }
+
+  @override
+  Future<Response> getBoardingPoints() async {
+    return await registerRouteRepositoryInterface.getBoardingPoints();
   }
 }

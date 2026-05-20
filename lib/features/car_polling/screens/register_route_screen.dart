@@ -2,34 +2,100 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../util/dimensions.dart';
 import '../../../util/styles.dart';
 import '../controllers/register_route_controller.dart';
+import '../../../localization/localization_controller.dart';
 import '../widgets/enhanced_coordinate_widget.dart';
 import '../widgets/rest_stop_widget.dart';
 
 class RegisterRouteScreen extends StatefulWidget {
-  const RegisterRouteScreen({super.key});
+  final String type;
+
+  const RegisterRouteScreen({super.key, required this.type});
 
   @override
   State<RegisterRouteScreen> createState() => _RegisterRouteScreenState();
 }
 
 class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
+  static const _lightBlue = Color(0xFFA9D0F5);
+  static const _inkBlack = Color(0xFF111111);
+  static const _activeBlue = Color(0xFF2F6BFF);
+
+  bool _showPreferences = false;
+  bool _showFeatures = false;
+  bool _showRestStops = false;
+  DateTime? _departureDate;
+  TimeOfDay? _departureTime;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Get.find<RegisterRouteController>();
+      final String mappedType = widget.type == 'single' ? 'trip' : widget.type;
+      controller.setRideType(mappedType);
+      _loadDateTimeFromController(controller);
+      controller.fetchBoardingPoints();
+    });
+  }
+
+  void _loadDateTimeFromController(RegisterRouteController controller) {
+    final raw = controller.startTimeController.text;
+    if (raw.isEmpty) return;
+    try {
+      final dt = DateFormat('yyyy-MM-dd HH:mm:ss').parse(raw);
+      setState(() {
+        _departureDate = dt;
+        _departureTime = TimeOfDay.fromDateTime(dt);
+      });
+    } catch (_) {}
+  }
+
+  void _saveDateTimeToController(RegisterRouteController controller) {
+    if (_departureDate == null || _departureTime == null) return;
+    final dt = DateTime(
+      _departureDate!.year,
+      _departureDate!.month,
+      _departureDate!.day,
+      _departureTime!.hour,
+      _departureTime!.minute,
+    );
+    controller.startTimeController.text =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
+  }
+
+  String get _tripTypeLabel {
+    final String mappedType = widget.type == 'single' ? 'trip' : widget.type;
+    switch (mappedType) {
+      case 'trip':
+        return 'One Trip';
+      case 'travel':
+        return 'Travel';
+      case 'routine':
+        return 'Routine';
+      case 'north_coast':
+        return 'North Coast';
+      default:
+        return mappedType;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String rideType = widget.type == 'single' ? 'trip' : widget.type;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       appBar: AppBarWidget(
-        title: 'register_route'.tr,
+        title: _tripTypeLabel,
         showBackButton: true,
       ),
       body: GetBuilder<RegisterRouteController>(
         init: Get.find<RegisterRouteController>(),
         builder: (controller) {
-          // Set the snackbar callback
           controller.onShowSnackBar = (message, backgroundColor,
               {icon = Icons.info_outline,
               duration = const Duration(seconds: 3)}) {
@@ -41,868 +107,444 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
             );
           };
 
+          final progress = _calculateProgress(controller);
+
           try {
             return Stack(
               children: [
-                // Main content
                 Column(
                   children: [
-                    // Progress indicator
-                    SizedBox(
-                      height: 4,
-                      child: LinearProgressIndicator(
-                        value: _calculateProgress(controller),
-                        backgroundColor: Theme.of(context).dividerColor,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    ),
+                    _buildProgressStrip(progress),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding:
-                            const EdgeInsets.all(Dimensions.paddingSizeDefault),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header Card
-                            _buildHeaderCard(),
-                            const SizedBox(height: Dimensions.paddingSizeLarge),
-
-                            // Route Information Section
-                            _buildSectionCard(
-                              title: 'route_information'.tr,
-                              icon: Icons.route,
-                              children: [
-                                EnhancedCoordinateWidget(
-                                  title: 'starting_point'.tr,
-                                  latController: controller.startLatController,
-                                  lngController: controller.startLngController,
-                                  icon: Icons.play_arrow,
-                                  iconColor: Colors.green,
-                                ),
-                                EnhancedCoordinateWidget(
-                                  title: 'destination'.tr,
-                                  latController: controller.endLatController,
-                                  lngController: controller.endLngController,
-                                  icon: Icons.flag,
-                                  iconColor: Colors.red,
-                                ),
-                                _buildEnhancedDateTimeField(
-                                  'departure_time'.tr,
-                                  controller.startTimeController,
-                                  () => _selectDateTime(controller),
-                                ),
-                              ],
+                            _buildPromoBanner(),
+                            const SizedBox(height: 22),
+                            Text(
+                              'where_do_you_want_to_go'.tr,
+                              style: textBold.copyWith(
+                                fontSize: Dimensions.fontSizeExtraLarge,
+                                color: _inkBlack,
+                              ),
                             ),
-
-                            // Recurrence Section
-                            _buildSectionCard(
-                              title: 'recurrence'.tr,
-                              icon: Icons.repeat,
+                            const SizedBox(height: 14),
+                            if (rideType == 'travel')
+                              CascadedBoardingPointDropdowns(
+                                controller: controller,
+                                fieldColor: _lightBlue,
+                                activeColor: _activeBlue,
+                              )
+                            else
+                              _buildRouteSection(controller),
+                            const SizedBox(height: 16),
+                            Row(
                               children: [
-                                _buildEnhancedDropdown(
-                                  'type'.tr,
-                                  controller.recurrenceType,
-                                  ['once', 'repeated'],
-                                  controller.setRecurrenceType,
-                                  Icons.repeat,
-                                ),
-                                if (controller.recurrenceType == 'repeated')
-                                  _buildEnhancedDateTimeField(
-                                    'select_dates'.tr,
-                                    TextEditingController(
-                                      text: controller.selectedDates.isEmpty
-                                          ? ''
-                                          : '${controller.selectedDates.length} ${'dates_selected'.tr}',
-                                    ),
-                                    () => _showMultiDatePicker(controller),
+                                Expanded(
+                                  child: _buildDateTimeTile(
+                                    label: 'date'.tr,
+                                    value: _departureDate == null
+                                        ? null
+                                        : DateFormat('dd/MM/yyyy')
+                                            .format(_departureDate!),
+                                    icon: Icons.calendar_today_outlined,
+                                    onTap: () => _pickDate(controller),
                                   ),
-                              ],
-                            ),
-
-                            // Vehicle & Pricing Section
-                            _buildSectionCard(
-                              title: 'vehicle_and_pricing'.tr,
-                              icon: Icons.directions_car,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildEnhancedTextField(
-                                        'price_per_seat'.tr,
-                                        controller.priceController,
-                                        TextInputType.number,
-                                        icon: Icons.attach_money,
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                        width: Dimensions.paddingSizeDefault),
-                                    Expanded(
-                                      child: _buildEnhancedTextField(
-                                        'available_seats'.tr,
-                                        controller.seatsController,
-                                        TextInputType.number,
-                                        icon: Icons.airline_seat_recline_normal,
-                                        hint: '1-50',
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter
-                                              .digitsOnly,
-                                          LengthLimitingTextInputFormatter(2),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                                // _buildEnhancedTextField(
-                                //   'vehicle_id'.tr,
-                                //   controller.vehicleIdController,
-                                //   TextInputType.text,
-                                //   icon: Icons.directions_car,
-                                //   hint: 'Vehicle identifier',
-                                // ),
-                              ],
-                            ),
-
-                            // Ride Preferences Section
-                            _buildSectionCard(
-                              title: 'ride_preferences'.tr,
-                              icon: Icons.tune,
-                              children: [
-                                _buildEnhancedDropdown(
-                                  'ride_type'.tr,
-                                  controller.rideType,
-                                  [
-                                    'work',
-                                    'college',
-                                    'transportation',
-                                    'governorates traveling',
-                                  ],
-                                  controller.setRideType,
-                                  Icons.work,
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildEnhancedTextField(
-                                        'minimum_age'.tr,
-                                        controller.minAgeController,
-                                        TextInputType.number,
-                                        icon: Icons.person,
-                                        hint: '13-100',
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter
-                                              .digitsOnly,
-                                          LengthLimitingTextInputFormatter(3),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                        width: Dimensions.paddingSizeDefault),
-                                    Expanded(
-                                      child: _buildEnhancedTextField(
-                                        'maximum_age'.tr,
-                                        controller.maxAgeController,
-                                        TextInputType.number,
-                                        icon: Icons.person,
-                                        hint: '13-100',
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter
-                                              .digitsOnly,
-                                          LengthLimitingTextInputFormatter(3),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                _buildEnhancedDropdown(
-                                  'allowed_gender'.tr,
-                                  controller.allowedGender,
-                                  ['both', 'male', 'female'],
-                                  controller.setAllowedGender,
-                                  Icons.people,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildDateTimeTile(
+                                    label: 'time'.tr,
+                                    value: _departureTime?.format(context),
+                                    icon: Icons.access_time_rounded,
+                                    onTap: () => _pickTime(controller),
+                                  ),
                                 ),
                               ],
                             ),
-
-                            // Vehicle Features Section
-                            _buildSectionCard(
-                              title: 'vehicle_features'.tr,
-                              icon: Icons.featured_play_list,
+                            if (rideType == 'routine') ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildDateTimeTile(
+                                      label: 'Departure Time'.tr,
+                                      value: controller.departureTimeController
+                                              .text.isNotEmpty
+                                          ? controller
+                                              .departureTimeController.text
+                                          : null,
+                                      icon: Icons.alarm_on_rounded,
+                                      onTap: () =>
+                                          _pickRoutineDepartureTime(controller),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildDateTimeTile(
+                                      label: 'Return Time'.tr,
+                                      value: controller.returnTimeController
+                                              .text.isNotEmpty
+                                          ? controller.returnTimeController.text
+                                          : null,
+                                      icon: Icons.alarm_off_rounded,
+                                      onTap: () =>
+                                          _pickRoutineReturnTime(controller),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 22),
+                            Text(
+                              'vehicle_and_pricing'.tr,
+                              style: textBold.copyWith(
+                                fontSize: Dimensions.fontSizeLarge,
+                                color: _inkBlack,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
                               children: [
-                                _buildFeatureGrid(controller),
+                                Expanded(
+                                  child: _buildWhiteField(
+                                    label: 'price_per_seat'.tr,
+                                    controller: controller.priceController,
+                                    keyboardType: TextInputType.number,
+                                    icon: Icons.payments_outlined,
+                                    hint: '0',
+                                    suffix: 'EGP',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildWhiteField(
+                                    label: 'available_seats'.tr,
+                                    controller: controller.seatsController,
+                                    keyboardType: TextInputType.number,
+                                    icon: Icons.event_seat_outlined,
+                                    hint: '1-50',
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(2),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
-
-                            // Rest Stops Section
-                            _buildSectionCard(
-                              title: 'rest_stops'.tr,
-                              icon: Icons.local_gas_station,
-                              children: [
-                                RestStopWidget(
+                            if (rideType == 'trip' || rideType == 'travel') ...[
+                              const SizedBox(height: 22),
+                              _buildExpandable(
+                                title: 'ride_preferences'.tr,
+                                expanded: _showPreferences,
+                                onToggle: () => setState(
+                                    () => _showPreferences = !_showPreferences),
+                                child: _buildPreferences(controller),
+                              ),
+                            ],
+                            if (rideType == 'trip' || rideType == 'travel') ...[
+                              const SizedBox(height: 10),
+                              _buildExpandable(
+                                title: 'vehicle_features'.tr,
+                                expanded: _showFeatures,
+                                onToggle: () => setState(
+                                    () => _showFeatures = !_showFeatures),
+                                child: _buildFeatureChips(controller, rideType),
+                              ),
+                            ],
+                            if (rideType == 'trip') ...[
+                              const SizedBox(height: 10),
+                              _buildExpandable(
+                                title: 'rest_stops'.tr,
+                                expanded: _showRestStops,
+                                onToggle: () => setState(
+                                    () => _showRestStops = !_showRestStops),
+                                child: RestStopWidget(
                                   restStops: controller.restStops,
                                   onAddRestStop: controller.addRestStop,
                                   onRemoveRestStop: controller.removeRestStop,
                                 ),
-                              ],
-                            ),
-
-                            // Submit Button Section (now part of scrollable body)
-                            _buildSubmitSection(controller),
-
-                            const SizedBox(height: Dimensions.paddingSizeLarge),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
-                // Loading overlay
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildStickySubmit(controller, progress),
+                ),
                 if (controller.isLoading)
                   Positioned.fill(
                     child: Container(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      color: Colors.black.withValues(alpha: 0.35),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
                   ),
               ],
             );
           } catch (e) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'An error occurred',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Please try again later',
-                    style: TextStyle(
-                      color: Theme.of(context).hintColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => Get.back(),
-                    child: const Text('Go Back'),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorState();
           }
         },
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildProgressStrip(double progress) {
     return Container(
-      padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).primaryColor.withValues(alpha: 0.1),
-            Theme.of(context).primaryColor.withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
-        border: Border.all(
-            color: Theme.of(context).primaryColor.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
-              borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-            ),
-            child: const Icon(Icons.add_road, color: Colors.white, size: 32),
-          ),
-          const SizedBox(width: Dimensions.paddingSizeDefault),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'create_new_route'.tr,
-                  style: textBold.copyWith(
-                    fontSize: Dimensions.fontSizeExtraLarge,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-                const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                Text(
-                  'share_your_journey_with_others'.tr,
-                  style: textRegular.copyWith(
-                    fontSize: Dimensions.fontSizeDefault,
-                    color: Theme.of(context).hintColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeLarge),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(Dimensions.paddingSizeDefault),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
-          Container(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(Dimensions.paddingSizeDefault),
-                topRight: Radius.circular(Dimensions.paddingSizeDefault),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Theme.of(context).primaryColor,
-                  size: 24,
-                ),
-                const SizedBox(width: Dimensions.paddingSizeDefault),
-                Text(
-                  title,
-                  style: textBold.copyWith(
-                    fontSize: Dimensions.fontSizeExtraLarge,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Section Content
-          Padding(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-            child: Column(
-              children: children,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEnhancedDateTimeField(
-    String label,
-    TextEditingController controller,
-    VoidCallback onTap,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textMedium.copyWith(
-              fontSize: Dimensions.fontSizeDefault,
-              color: Theme.of(context).hintColor,
-            ),
-          ),
-          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-            child: Container(
-              padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                color: Theme.of(context).cardColor,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    color: Theme.of(context).hintColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: Dimensions.paddingSizeDefault),
-                  Expanded(
-                    child: Text(
-                      controller.text.isEmpty
-                          ? 'tap_to_select_date_and_time'.tr
-                          : controller.text,
-                      style: textRegular.copyWith(
-                        fontSize: Dimensions.fontSizeDefault,
-                        color: controller.text.isEmpty
-                            ? Theme.of(context).hintColor
-                            : Theme.of(context).textTheme.bodyLarge?.color,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.calendar_today,
-                    color: Theme.of(context).primaryColor,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEnhancedTextField(
-    String label,
-    TextEditingController controller,
-    TextInputType keyboardType, {
-    String? hint,
-    IconData? icon,
-    Widget? suffix,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textMedium.copyWith(
-              fontSize: Dimensions.fontSizeDefault,
-              color: Theme.of(context).hintColor,
-            ),
-          ),
-          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-          TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            inputFormatters: inputFormatters,
-            decoration: InputDecoration(
-              hintText: hint,
-              border: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide:
-                    BorderSide(color: Theme.of(context).primaryColor, width: 2),
-              ),
-              contentPadding:
-                  const EdgeInsets.all(Dimensions.paddingSizeDefault),
-              prefixIcon: icon != null
-                  ? Icon(icon, color: Theme.of(context).hintColor)
-                  : null,
-              suffixIcon: suffix,
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEnhancedDropdown(
-    String label,
-    String currentValue,
-    List<String> options,
-    Function(String) onChanged,
-    IconData icon,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textMedium.copyWith(
-              fontSize: Dimensions.fontSizeDefault,
-              color: Theme.of(context).hintColor,
-            ),
-          ),
-          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-          DropdownButtonFormField<String>(
-            value: currentValue,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-                borderSide:
-                    BorderSide(color: Theme.of(context).primaryColor, width: 2),
-              ),
-              contentPadding:
-                  const EdgeInsets.all(Dimensions.paddingSizeDefault),
-              prefixIcon: Icon(icon, color: Theme.of(context).hintColor),
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-            ),
-            items: options.map((String option) {
-              return DropdownMenuItem<String>(
-                value: option,
-                child: Text(option.tr),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                onChanged(newValue);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureGrid(RegisterRouteController controller) {
-    final features = [
-      {
-        'title': 'air_conditioning'.tr,
-        'value': controller.isAc,
-        'setter': controller.setIsAc,
-        'icon': Icons.ac_unit
-      },
-      {
-        'title': 'smoking_allowed'.tr,
-        'value': controller.isSmokingAllowed,
-        'setter': controller.setIsSmokingAllowed,
-        'icon': Icons.smoking_rooms
-      },
-      {
-        'title': 'music_system'.tr,
-        'value': controller.hasMusic,
-        'setter': controller.setHasMusic,
-        'icon': Icons.music_note
-      },
-      {
-        'title': 'screen_entertainment'.tr,
-        'value': controller.hasScreenEntertainment,
-        'setter': controller.setHasScreenEntertainment,
-        'icon': Icons.tv
-      },
-      {
-        'title': 'allow_luggage'.tr,
-        'value': controller.allowLuggage,
-        'setter': controller.setAllowLuggage,
-        'icon': Icons.luggage
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 2.5,
-        crossAxisSpacing: Dimensions.paddingSizeSmall,
-        mainAxisSpacing: Dimensions.paddingSizeSmall,
-      ),
-      itemCount: features.length,
-      itemBuilder: (context, index) {
-        final feature = features[index];
-        return _buildFeatureCard(
-          feature['title'] as String,
-          feature['value'] as bool,
-          feature['setter'] as Function(bool),
-          feature['icon'] as IconData,
-        );
-      },
-    );
-  }
-
-  Widget _buildFeatureCard(
-      String title, bool value, Function(bool) onChanged, IconData icon) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-      child: Container(
-        padding: const EdgeInsets.all(Dimensions.paddingSizeSmall),
-        decoration: BoxDecoration(
-          color: value
-              ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
-              : Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-          border: Border.all(
-            color: value
-                ? Theme.of(context).primaryColor
-                : Theme.of(context).dividerColor,
-            width: value ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: value
-                  ? Theme.of(context).primaryColor
-                  : Theme.of(context).hintColor,
-              size: 20,
-            ),
-            const SizedBox(width: Dimensions.paddingSizeExtraSmall),
-            Expanded(
-              child: Text(
-                title,
-                style: textRegular.copyWith(
-                  fontSize: Dimensions.fontSizeSmall,
-                  color: value
-                      ? Theme.of(context).primaryColor
-                      : Theme.of(context).hintColor,
-                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Icon(
-              value ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: value
-                  ? Theme.of(context).primaryColor
-                  : Theme.of(context).hintColor,
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _calculateProgress(RegisterRouteController controller) {
-    double progress = 0.0;
-
-    // Required fields (must be filled)
-    int requiredFields = 0;
-    int totalRequiredFields = 5;
-
-    if (controller.startLatController.text.isNotEmpty) requiredFields++;
-    if (controller.startLngController.text.isNotEmpty) requiredFields++;
-    if (controller.endLatController.text.isNotEmpty) requiredFields++;
-    if (controller.endLngController.text.isNotEmpty) requiredFields++;
-    if (controller.startTimeController.text.isNotEmpty) requiredFields++;
-
-    // Optional fields (bonus points)
-    int optionalFields = 0;
-    int totalOptionalFields = 4;
-
-    if (controller.priceController.text.isNotEmpty) optionalFields++;
-    if (controller.seatsController.text.isNotEmpty) optionalFields++;
-    if (controller.minAgeController.text.isNotEmpty) optionalFields++;
-    if (controller.maxAgeController.text.isNotEmpty) optionalFields++;
-
-    // Calculate progress: 70% for required fields + 30% for optional fields
-    double requiredProgress = requiredFields / totalRequiredFields * 0.7;
-    double optionalProgress = optionalFields / totalOptionalFields * 0.3;
-
-    progress = requiredProgress + optionalProgress;
-
-    // Ensure progress doesn't exceed 100%
-    return progress.clamp(0.0, 1.0);
-  }
-
-  void _selectDateTime(RegisterRouteController controller) async {
-    if (!mounted) return;
-
-    // Show date picker with improved styling
-    final DateTime? date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      locale: const Locale('en', 'US'), // Ensure consistent locale
-      builder: (BuildContext context, Widget? child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: Theme.of(context).primaryColor,
-                  onPrimary: Colors.white,
-                  surface: Theme.of(context).cardColor,
-                  onSurface: Theme.of(context).textTheme.bodyLarge?.color,
-                ),
-            dialogTheme: DialogThemeData(
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (date != null && mounted) {
-      // Show time picker with improved styling and better UX
-      final TimeOfDay? time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-        builder: (BuildContext context, Widget? child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: Theme.of(context).colorScheme.copyWith(
-                    primary: Theme.of(context).primaryColor,
-                    onPrimary: Colors.white,
-                    surface: Theme.of(context).cardColor,
-                    onSurface: Theme.of(context).textTheme.bodyLarge?.color,
-                  ),
-              dialogTheme: DialogThemeData(
-                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              ),
-            ),
-            child: child!,
-          );
-        },
-      );
-
-      if (time != null && mounted) {
-        final DateTime selectedDateTime = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          time.hour,
-          time.minute,
-        );
-
-        controller.startTimeController.text =
-            DateFormat('yyyy-MM-dd HH:mm:ss').format(selectedDateTime);
-        if (mounted) {
-          setState(() {});
-        }
-      }
-    }
-  }
-
-  Widget _buildSubmitSection(RegisterRouteController controller) {
-    return _buildSectionCard(
-      title: 'submit_route'.tr,
-      icon: Icons.rocket_launch,
-      children: [
-        // Progress indicator
-        Container(
-          margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
-          child: Row(
+          Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                color: Theme.of(context).primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: Dimensions.paddingSizeSmall),
               Expanded(
                 child: Text(
-                  'ready_to_register_route'.tr,
-                  style: textMedium.copyWith(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: Dimensions.fontSizeDefault,
-                  ),
+                  'form_completion'.tr,
+                  style: textMedium.copyWith(fontSize: 12, color: _inkBlack),
                 ),
               ),
               Text(
-                '${(_calculateProgress(controller) * 100).toInt()}%',
-                style: textBold.copyWith(
-                  color: Theme.of(context).primaryColor,
-                  fontSize: Dimensions.fontSizeDefault,
+                '${(progress * 100).toInt()}%',
+                style: textBold.copyWith(color: _activeBlue, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 5,
+              backgroundColor: _lightBlue.withValues(alpha: 0.35),
+              valueColor: const AlwaysStoppedAnimation<Color>(_activeBlue),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _inkBlack,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.auto_awesome,
+                    color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'share_your_journey'.tr,
+                      style: textBold.copyWith(
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'find_passengers_on_your_route'.tr,
+                      style: textRegular.copyWith(
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'create_new_route'.tr,
+              style: textRegular.copyWith(fontSize: 11, color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteSection(RegisterRouteController controller) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 28),
+          child: Column(
+            children: [
+              Icon(Icons.trip_origin, color: _activeBlue, size: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  children: List.generate(
+                    4,
+                    (_) => Container(
+                      width: 2,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _activeBlue.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Icon(Icons.flag_rounded, color: _inkBlack, size: 20),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            children: [
+              EnhancedCoordinateWidget(
+                title: 'starting_point'.tr,
+                latController: controller.startLatController,
+                lngController: controller.startLngController,
+                icon: Icons.trip_origin,
+                iconColor: _activeBlue,
+                compactBlueStyle: true,
+                fieldColor: _lightBlue,
+                onLocationChanged: () => setState(() {}),
+              ),
+              EnhancedCoordinateWidget(
+                title: 'destination'.tr,
+                latController: controller.endLatController,
+                lngController: controller.endLngController,
+                icon: Icons.flag,
+                iconColor: _activeBlue,
+                compactBlueStyle: true,
+                fieldColor: _lightBlue,
+                onLocationChanged: () => setState(() {}),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimeTile({
+    required String label,
+    required String? value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: _activeBlue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: textMedium.copyWith(fontSize: 12)),
+                    const SizedBox(height: 2),
+                    Text(
+                      value ?? 'select'.tr,
+                      style: textRegular.copyWith(
+                        fontSize: 14,
+                        color: value != null ? _inkBlack : Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
 
-        // Progress bar
-        Container(
-          margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeLarge),
-          child: LinearProgressIndicator(
-            value: _calculateProgress(controller),
-            backgroundColor: Theme.of(context).dividerColor,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).primaryColor,
-            ),
-            minHeight: 6,
-          ),
+  Widget _buildWhiteField({
+    required String label,
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    IconData? icon,
+    String? hint,
+    String? suffix,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: textMedium.copyWith(fontSize: 12, color: _inkBlack),
         ),
-
-        // Submit Button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: () {
-              // Show dialog with form data before submitting
-              _showRouteDataDialog(controller);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(Dimensions.paddingSizeSmall),
-              ),
-              elevation: 4,
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          style: textMedium.copyWith(fontSize: 15),
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon:
+                icon != null ? Icon(icon, size: 20, color: _activeBlue) : null,
+            suffixText: suffix,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.send, color: Colors.white, size: 24),
-                const SizedBox(width: Dimensions.paddingSizeSmall),
-                Text(
-                  'register_route'.tr,
-                  style: textMedium.copyWith(
-                    color: Colors.white,
-                    fontSize: Dimensions.fontSizeLarge,
-                  ),
-                ),
-              ],
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _activeBlue, width: 1.5),
             ),
           ),
         ),
@@ -910,157 +552,505 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
     );
   }
 
+  Widget _buildExpandable({
+    required String title,
+    required bool expanded,
+    required VoidCallback onToggle,
+    required Widget child,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.tune_rounded, color: _activeBlue, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: textMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: _inkBlack,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: child,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferences(RegisterRouteController controller) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildWhiteField(
+                label: 'minimum_age'.tr,
+                controller: controller.minAgeController,
+                keyboardType: TextInputType.number,
+                hint: '13',
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWhiteField(
+                label: 'maximum_age'.tr,
+                controller: controller.maxAgeController,
+                keyboardType: TextInputType.number,
+                hint: '100',
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text('allowed_gender'.tr,
+            style: textMedium.copyWith(fontSize: 12, color: _inkBlack)),
+        const SizedBox(height: 8),
+        _buildGenderChips(controller),
+      ],
+    );
+  }
+
+  Widget _buildGenderChips(RegisterRouteController controller) {
+    const options = ['both', 'male', 'female'];
+    return Row(
+      children: options.map((option) {
+        final selected = controller.allowedGender == option;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: option != 'female' ? 8 : 0),
+            child: ChoiceChip(
+              label: Text(option.tr,
+                  style: textMedium.copyWith(
+                    fontSize: 12,
+                    color: selected ? Colors.white : _inkBlack,
+                  )),
+              selected: selected,
+              onSelected: (_) => controller.setAllowedGender(option),
+              selectedColor: _activeBlue,
+              backgroundColor: _lightBlue.withValues(alpha: 0.35),
+              side: BorderSide(
+                color: selected ? _activeBlue : const Color(0xFFE0E0E0),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFeatureChips(
+      RegisterRouteController controller, String rideType) {
+    // if (rideType == 'travel') {
+    //   // Travel type only supports AC feature
+    //   return FilterChip(
+    //     label: Text('air_conditioning'.tr,
+    //         style: textRegular.copyWith(fontSize: 12)),
+    //     selected: controller.isAc,
+    //     onSelected: (_) => controller.setIsAc(!controller.isAc),
+    //     avatar: Icon(Icons.ac_unit_rounded,
+    //         size: 18, color: controller.isAc ? _activeBlue : Colors.grey),
+    //     selectedColor: _lightBlue,
+    //     checkmarkColor: _activeBlue,
+    //     side: BorderSide(
+    //       color: controller.isAc ? _activeBlue : const Color(0xFFE0E0E0),
+    //     ),
+    //   );
+    // }
+
+    final features = [
+      (
+        'air_conditioning'.tr,
+        controller.isAc,
+        controller.setIsAc,
+        Icons.ac_unit_rounded
+      ),
+      (
+        'smoking_allowed'.tr,
+        controller.isSmokingAllowed,
+        controller.setIsSmokingAllowed,
+        Icons.smoking_rooms_rounded
+      ),
+      (
+        'music_system'.tr,
+        controller.hasMusic,
+        controller.setHasMusic,
+        Icons.music_note_rounded
+      ),
+      (
+        'screen_entertainment'.tr,
+        controller.hasScreenEntertainment,
+        controller.setHasScreenEntertainment,
+        Icons.tv_rounded
+      ),
+      (
+        'allow_luggage'.tr,
+        controller.allowLuggage,
+        controller.setAllowLuggage,
+        Icons.luggage_rounded
+      ),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: features.map((f) {
+        return FilterChip(
+          label: Text(f.$1, style: textRegular.copyWith(fontSize: 12)),
+          selected: f.$2,
+          onSelected: (_) => f.$3(!f.$2),
+          avatar: Icon(f.$4, size: 18, color: f.$2 ? _activeBlue : Colors.grey),
+          selectedColor: _lightBlue,
+          checkmarkColor: _activeBlue,
+          side: BorderSide(
+            color: f.$2 ? _activeBlue : const Color(0xFFE0E0E0),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildStickySubmit(
+      RegisterRouteController controller, double progress) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        color: Colors.white,
+        child: SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed:
+                _canSubmit(controller) ? () => _showDataPreviewDialog() : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _inkBlack,
+              disabledBackgroundColor: const Color(0xFF555555),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+            ),
+            child: Text(
+              _canSubmit(controller)
+                  ? 'register_route'.tr
+                  : 'complete_required_fields'.tr,
+              style: textBold.copyWith(
+                color: Colors.white,
+                fontSize: Dimensions.fontSizeDefault,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline,
+              size: 64, color: Theme.of(context).colorScheme.error),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => Get.back(),
+            child: const Text('Go Back'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _canSubmit(RegisterRouteController controller) {
+    final String type = widget.type == 'single' ? 'trip' : widget.type;
+
+    final bool hasRoute = type == 'travel'
+        ? (controller.selectedStartBoardingPoint != null &&
+            controller.selectedEndBoardingPoint != null)
+        : (controller.startLatController.text.isNotEmpty &&
+            controller.startLngController.text.isNotEmpty &&
+            controller.endLatController.text.isNotEmpty &&
+            controller.endLngController.text.isNotEmpty);
+
+    final bool hasRoutineTimes = type == 'routine'
+        ? (controller.departureTimeController.text.isNotEmpty &&
+            controller.returnTimeController.text.isNotEmpty)
+        : true;
+
+    return hasRoute &&
+        hasRoutineTimes &&
+        controller.startTimeController.text.isNotEmpty &&
+        controller.priceController.text.isNotEmpty &&
+        controller.seatsController.text.isNotEmpty;
+  }
+
+  double _calculateProgress(RegisterRouteController controller) {
+    final String type = widget.type == 'single' ? 'trip' : widget.type;
+    int required = 0;
+    int total = 7;
+
+    if (type == 'travel') {
+      if (controller.selectedStartBoardingPoint != null) required += 2;
+      if (controller.selectedEndBoardingPoint != null) required += 2;
+    } else {
+      if (controller.startLatController.text.isNotEmpty) required++;
+      if (controller.startLngController.text.isNotEmpty) required++;
+      if (controller.endLatController.text.isNotEmpty) required++;
+      if (controller.endLngController.text.isNotEmpty) required++;
+    }
+
+    if (controller.startTimeController.text.isNotEmpty) required++;
+    if (controller.priceController.text.isNotEmpty) required++;
+    if (controller.seatsController.text.isNotEmpty) required++;
+
+    if (type == 'routine') {
+      total = 9;
+      if (controller.departureTimeController.text.isNotEmpty) required++;
+      if (controller.returnTimeController.text.isNotEmpty) required++;
+    }
+
+    return (required / total).clamp(0.0, 1.0);
+  }
+
+  Future<void> _pickDate(RegisterRouteController controller) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate:
+          _departureDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _activeBlue,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (date != null && mounted) {
+      setState(() => _departureDate = date);
+      _saveDateTimeToController(controller);
+    }
+  }
+
+  Future<void> _pickTime(RegisterRouteController controller) async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _departureTime ?? TimeOfDay.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _activeBlue,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (time != null && mounted) {
+      setState(() => _departureTime = time);
+      _saveDateTimeToController(controller);
+    }
+  }
+
+  Future<void> _pickRoutineDepartureTime(
+      RegisterRouteController controller) async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _activeBlue,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (time != null && mounted) {
+      final hour = time.hour.toString().padLeft(2, '0');
+      final minute = time.minute.toString().padLeft(2, '0');
+      setState(() {
+        controller.departureTimeController.text = '$hour:$minute';
+      });
+    }
+  }
+
+  Future<void> _pickRoutineReturnTime(
+      RegisterRouteController controller) async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _activeBlue,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (time != null && mounted) {
+      final hour = time.hour.toString().padLeft(2, '0');
+      final minute = time.minute.toString().padLeft(2, '0');
+      setState(() {
+        controller.returnTimeController.text = '$hour:$minute';
+      });
+    }
+  }
+
   void _showSnackBar({
     required String message,
     required Color backgroundColor,
     IconData icon = Icons.info_outline,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
   }) {
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(icon, color: Colors.white, size: 20),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
+                child:
+                    Text(message, style: const TextStyle(color: Colors.white))),
           ],
         ),
         duration: duration,
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        action: SnackBarAction(
-          label: 'Dismiss',
-          textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
-  void _showRouteDataDialog(RegisterRouteController controller) async {
-    if (!mounted) return;
-
-    // Generate polyline automatically before showing dialog
-    await controller.generateEncodedPolyline();
-
-    if (!mounted) return;
+  Future<void> _showDataPreviewDialog() async {
+    final controller = Get.find<RegisterRouteController>();
+    final String type = widget.type == 'single' ? 'trip' : widget.type;
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.info_outline,
-                  color: Theme.of(dialogContext).primaryColor),
-              const SizedBox(width: Dimensions.paddingSizeSmall),
-              Text('confirm_route_data'.tr),
-            ],
-          ),
-          content: SizedBox(
-            width: 300,
-            height: 400,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('route_preview'.tr, style: textBold),
+        content: SizedBox(
+          width: 320,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (type == 'travel') ...[
+                  _buildDataRow('Starting Boarding Point',
+                      '${controller.selectedStartBoardingPoint?.name ?? ''} (${controller.selectedStartCity?.name ?? ''})'),
+                  _buildDataRow('Destination Boarding Point',
+                      '${controller.selectedEndBoardingPoint?.name ?? ''} (${controller.selectedEndCity?.name ?? ''})'),
+                ] else ...[
                   _buildDataRow('starting_point'.tr,
-                      "Lat: ${controller.startLatController.text}, Lng: ${controller.startLngController.text}"),
+                      '${controller.startLatController.text}, ${controller.startLngController.text}'),
                   _buildDataRow('destination'.tr,
-                      "Lat: ${controller.endLatController.text}, Lng: ${controller.endLngController.text}"),
-                  _buildDataRow(
-                      'departure_time'.tr, controller.startTimeController.text),
-                  _buildDataRow('price_per_seat'.tr,
-                      "${controller.priceController.text} EGP"),
-                  // _buildDataRow(
-                  //     'vehicle_id'.tr, controller.vehicleIdController.text),
-                  _buildDataRow(
-                      'available_seats'.tr, controller.seatsController.text),
-                  _buildDataRow('age_range'.tr,
-                      "${controller.minAgeController.text} - ${controller.maxAgeController.text}"),
-                  _buildDataRow('ride_type'.tr, controller.rideType.tr),
-                  _buildDataRow(
-                      'allowed_gender'.tr, controller.allowedGender.tr),
-                  _buildDataRow('features'.tr, _getFeaturesList(controller)),
-                  _buildDataRow(
-                      'rest_stops'.tr, "${controller.restStops.length} stops"),
+                      '${controller.endLatController.text}, ${controller.endLngController.text}'),
                 ],
-              ),
+                _buildDataRow(
+                    'departure_time'.tr, controller.startTimeController.text),
+                if (type == 'routine') ...[
+                  _buildDataRow('Departure Time',
+                      controller.departureTimeController.text),
+                  _buildDataRow(
+                      'Return Time', controller.returnTimeController.text),
+                ],
+                _buildDataRow('price_per_seat'.tr,
+                    '${controller.priceController.text} EGP'),
+                _buildDataRow(
+                    'available_seats'.tr, controller.seatsController.text),
+                if (type == 'trip' || type == 'travel')
+                  _buildDataRow('features'.tr, _getFeaturesList(controller)),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('cancel'.tr),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('edit'.tr),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _inkBlack,
+              foregroundColor: Colors.white,
             ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                // Add a small delay to ensure dialog is closed before showing snackbar
-                await Future.delayed(const Duration(milliseconds: 300));
-                // Call the actual registration method
-                controller.registerRoute();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(dialogContext).primaryColor,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.send, size: 18, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Text('register_route'.tr,
-                      style: textMedium.copyWith(
-                          fontSize: Dimensions.fontSizeDefault,
-                          color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+            onPressed: () {
+              Navigator.pop(ctx);
+              controller.registerRoute();
+            },
+            child: Text('confirm'.tr),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildDataRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 2,
-            child: Text(
-              label,
-              style: textMedium.copyWith(
-                fontSize: Dimensions.fontSizeSmall,
-                color: Theme.of(context).hintColor,
-              ),
-            ),
+            child: Text(label,
+                style: textMedium.copyWith(
+                    fontSize: 12, color: Theme.of(context).hintColor)),
           ),
-          const SizedBox(width: Dimensions.paddingSizeSmall),
           Expanded(
             flex: 3,
             child: Text(
               value.isEmpty ? 'not_set'.tr : value,
-              style: textRegular.copyWith(
-                fontSize: Dimensions.fontSizeSmall,
-                color:
-                    value.isEmpty ? Theme.of(context).colorScheme.error : null,
-              ),
+              style: textRegular.copyWith(fontSize: 12),
             ),
           ),
         ],
@@ -1069,65 +1059,244 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
   }
 
   String _getFeaturesList(RegisterRouteController controller) {
-    List<String> features = [];
+    final features = <String>[];
     if (controller.isAc) features.add('air_conditioning'.tr);
-    if (controller.isSmokingAllowed) features.add('smoking_allowed'.tr);
-    if (controller.hasMusic) features.add('music_system'.tr);
-    if (controller.hasScreenEntertainment) {
-      features.add('screen_entertainment'.tr);
+    final String mappedType = widget.type == 'single' ? 'trip' : widget.type;
+    if (mappedType != 'travel') {
+      if (controller.isSmokingAllowed) features.add('smoking_allowed'.tr);
+      if (controller.hasMusic) features.add('music_system'.tr);
+      if (controller.hasScreenEntertainment) {
+        features.add('screen_entertainment'.tr);
+      }
+      if (controller.allowLuggage) features.add('allow_luggage'.tr);
     }
-    if (controller.allowLuggage) features.add('allow_luggage'.tr);
-
     return features.isEmpty ? 'none'.tr : features.join(', ');
   }
+}
 
-  void _showMultiDatePicker(RegisterRouteController controller) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('select_dates'.tr),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: SfDateRangePicker(
-              selectionMode: DateRangePickerSelectionMode.multiple,
-              initialSelectedDates: controller.selectedDates,
-              minDate: DateTime.now(),
-              maxDate: DateTime.now().add(const Duration(days: 90)),
-              selectionColor: Theme.of(context).primaryColor,
-              todayHighlightColor: Theme.of(context).primaryColor,
-              startRangeSelectionColor: Theme.of(context).primaryColor,
-              endRangeSelectionColor: Theme.of(context).primaryColor,
-              rangeSelectionColor:
-                  Theme.of(context).primaryColor.withValues(alpha: 0.1),
-              headerStyle: DateRangePickerHeaderStyle(
-                textStyle: TextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              monthCellStyle: DateRangePickerMonthCellStyle(
-                todayTextStyle: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
-                if (args.value is List<DateTime>) {
-                  controller.setSelectedDates(args.value);
-                }
-              },
-            ),
+class CascadedBoardingPointDropdowns extends StatelessWidget {
+  final RegisterRouteController controller;
+  final Color fieldColor;
+  final Color activeColor;
+
+  const CascadedBoardingPointDropdowns({
+    super.key,
+    required this.controller,
+    required this.fieldColor,
+    required this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.isLoadingBoardingPoints) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: CircularProgressIndicator(color: activeColor),
+        ),
+      );
+    }
+
+    final bool isLtr = Get.find<LocalizationController>().isLtr;
+
+    final startBoardingPoints = controller.selectedStartCity == null
+        ? <BoardingPoint>[]
+        : controller.boardingPoints
+            .where((bp) => bp.cityId == controller.selectedStartCity!.id)
+            .toList();
+
+    final endBoardingPoints = controller.selectedEndCity == null
+        ? <BoardingPoint>[]
+        : controller.boardingPoints
+            .where((bp) => bp.cityId == controller.selectedEndCity!.id)
+            .toList();
+
+    return Column(
+      children: [
+        // Starting Boarding Point Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: fieldColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: fieldColor.withOpacity(0.3)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('ok'.tr),
-            ),
-          ],
-        );
-      },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.trip_origin, color: activeColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'starting_point'.tr,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<City>(
+                      value: controller.selectedStartCity,
+                      decoration: InputDecoration(
+                        labelText: 'City',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                      ),
+                      items: controller.cities.map((city) {
+                        return DropdownMenuItem<City>(
+                          value: city,
+                          child: Text(isLtr ? city.name : city.nameAr,
+                              style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: (city) => controller.setStartCity(city),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<BoardingPoint>(
+                      value: controller.selectedStartBoardingPoint,
+                      disabledHint: const Text('Select city',
+                          style: TextStyle(fontSize: 12)),
+                      decoration: InputDecoration(
+                        labelText: 'Boarding Point',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                      ),
+                      items: startBoardingPoints.map((bp) {
+                        return DropdownMenuItem<BoardingPoint>(
+                          value: bp,
+                          child: Text(isLtr ? bp.name : bp.nameAr,
+                              style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: controller.selectedStartCity == null
+                          ? null
+                          : (bp) => controller.setStartBoardingPoint(bp),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Destination Boarding Point Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: fieldColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: fieldColor.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.flag_rounded, color: activeColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'destination'.tr,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<City>(
+                      value: controller.selectedEndCity,
+                      decoration: InputDecoration(
+                        labelText: 'City',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                      ),
+                      items: controller.cities.map((city) {
+                        return DropdownMenuItem<City>(
+                          value: city,
+                          child: Text(isLtr ? city.name : city.nameAr,
+                              style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: (city) => controller.setEndCity(city),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<BoardingPoint>(
+                      value: controller.selectedEndBoardingPoint,
+                      disabledHint: const Text('Select city',
+                          style: TextStyle(fontSize: 12)),
+                      decoration: InputDecoration(
+                        labelText: 'Boarding Point',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                      ),
+                      items: endBoardingPoints.map((bp) {
+                        return DropdownMenuItem<BoardingPoint>(
+                          value: bp,
+                          child: Text(isLtr ? bp.name : bp.nameAr,
+                              style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: controller.selectedEndCity == null
+                          ? null
+                          : (bp) => controller.setEndBoardingPoint(bp),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

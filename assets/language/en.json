@@ -977,5 +977,20 @@
   "cancel_specific_dates": "Cancel Specific Dates",
   "cancel_entire_trip": "Cancel Entire Trip",
   "select_dates_to_cancel": "Select dates to cancel",
-  "cancel_selected": "Cancel Selected"
+  "cancel_selected": "Cancel Selected",
+  "more_options": "More options",
+  "optional": "Optional",
+  "form_completion": "Form completion",
+  "complete_required_fields": "Complete required fields",
+  "route_preview": "Route preview",
+  "features": "Features",
+  "where_do_you_want_to_go": "Where do you want to go?",
+  "share_your_journey": "Share your journey",
+  "find_passengers_on_your_route": "Find passengers going your way",
+  "select": "Select",
+  "date": "Date",
+  "Create Trip": "Create Trip",
+  "navigate_to": "Navigate to",
+  "cannot_open_maps": "Cannot open maps application",
+  "location_coordinates_not_available": "Location coordinates are not available"
 }

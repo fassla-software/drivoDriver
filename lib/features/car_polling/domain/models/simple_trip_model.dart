@@ -53,6 +53,7 @@ class SimpleTripModel {
   int? passengersCount;
   String? encodedPolyline;
   String? tripType;
+  String? carpoolType;
   List<RepeatedDateModel>? tripDates;
   List<PassengerCoordinateModel>? passengerCoordinates;
   List<SimplePassengerModel>? passengers;
@@ -87,66 +88,116 @@ class SimpleTripModel {
     this.passengersCount,
     this.encodedPolyline,
     this.tripType,
+    this.carpoolType,
     this.isCancelled,
     this.tripDates,
     this.passengerCoordinates,
     this.passengers,
   });
 
-  factory SimpleTripModel.fromJson(Map<String, dynamic> json) {
+    factory SimpleTripModel.fromJson(Map<String, dynamic> json) {
     return SimpleTripModel(
       id: json['id'],
       name: json['name']?.toString(),
       profileImage: json['profile_image']?.toString(),
+
       seats: json['seats'],
       isSmokingAllowed: json['is_smoking_allowed'],
       isAc: json['is_ac'],
       isCancelled: json['is_cancelled'],
+
       allowedGender: json['allowed_gender']?.toString(),
       allowedAgeMin: json['allowed_age_min'],
       allowedAgeMax: json['allowed_age_max'],
+
       hasScreenEntertainment: json['has_screen_entertainment'],
       hasMusic: json['has_music'],
       allowLuggage: json['allow_luggage'],
+
       startDay: json['start_day']?.toString(),
       startHour: json['start_hour']?.toString(),
       startAddress: json['start_address']?.toString(),
+
       tripType: json['recurrence_type']?.toString(),
+      carpoolType: (json['carpool_type'] ?? json['type'])?.toString(),
+
       tripDates: json['repeated_dates'] != null
           ? (json['repeated_dates'] as List)
               .map((item) => RepeatedDateModel.fromJson(item))
               .toList()
           : null,
+
       startCoordinates: json['start_coordinates'] != null
           ? List<double>.from(json['start_coordinates'])
           : null,
+
       startTime: json['start_time']?.toString(),
       endTime: json['end_time']?.toString(),
+
       endCoordinates: json['end_coordinates'] != null
           ? List<double>.from(json['end_coordinates'])
           : null,
+
       price: json['price']?.toDouble(),
       availableSeats: json['available_seats'],
+
       startMeridiem: json['start_meridiem']?.toString(),
       endMeridiem: json['end_meridiem']?.toString(),
+
       endAddress: json['end_address']?.toString(),
+
       isTripStarted: json['is_trip_started'],
+
       vehicleName: json['vehicle_name']?.toString(),
       passengersCount: json['passengers_count'],
+
       encodedPolyline: json['encoded_polyline']?.toString(),
-      // Debug passenger coordinates
-      passengerCoordinates: (() {
-        print(
-            '=== Processing passenger_coordinates: ${json['passenger_coordinates']} ===');
-        if (json['passenger_coordinates'] != null) {
-          final list = json['passenger_coordinates'] as List;
-          print('=== Passenger coordinates list length: ${list.length} ===');
-          return (list
-              .map((item) => PassengerCoordinateModel.fromJson(item))
-              .toList());
-        }
-        return null;
-      })(),
+
+      // ❌ تجاهل passenger_coordinates من السيرفر لأنه فاضي
+      // ✅ نبنيه من passengers
+      passengerCoordinates: json['passengers'] != null
+          ? (json['passengers'] as List)
+              .expand((p) {
+                List<PassengerCoordinateModel> result = [];
+
+                // pickup
+                if (p['closest_pickup_point'] != null) {
+                  result.add(
+                    PassengerCoordinateModel.fromJson({
+                      'type': 'pickup',
+                      'passenger_id': p['carpool_trip_id'],
+                      'closest_pickup_point': p['closest_pickup_point'],
+                      'pickup_coordinates': p['start_coordinates'] != null
+                          ? [
+                              p['start_coordinates']['lat'],
+                              p['start_coordinates']['lng']
+                            ]
+                          : null,
+                      'address': p['pickup_address'],
+                    }),
+                  );
+                }
+
+                // dropoff
+                if (p['end_coordinates'] != null) {
+                  result.add(
+                    PassengerCoordinateModel.fromJson({
+                      'type': 'dropoff',
+                      'passenger_id': p['carpool_trip_id'],
+                      'dropoff_coordinates': [
+                        p['end_coordinates']['lat'],
+                        p['end_coordinates']['lng']
+                      ],
+                      'address': p['dropoff_address'],
+                    }),
+                  );
+                }
+
+                return result;
+              })
+              .toList()
+          : [],
+
       passengers: json['passengers'] != null
           ? (json['passengers'] as List)
               .map((item) => SimplePassengerModel.fromJson(item))
@@ -185,11 +236,10 @@ class SimpleTripModel {
       'vehicle_name': vehicleName,
       'passengers_count': passengersCount,
       'encoded_polyline': encodedPolyline,
-      'passenger_coordinates':
-          passengerCoordinates?.map((item) => item.toJson()).toList(),
-      'passengers': passengers?.map((item) => item.toJson()).toList(),
       'recurrence_type': tripType,
-      'repeated_dates': tripDates?.map((item) => item.toJson()).toList(),
+      'carpool_type': carpoolType,
+      'repeated_dates': tripDates?.map((e) => e.toJson()).toList(),
+      'passengers': passengers?.map((e) => e.toJson()).toList(),
     };
   }
 

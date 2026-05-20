@@ -32,13 +32,29 @@ class LocalizationController extends GetxController  implements GetxService{
     Get.find<ApiClient>().updateHeader(sharedPreferences.getString(AppConstants.token)??'', sharedPreferences.getString(AppConstants.languageCode), 'latitude', 'longitude', sharedPreferences.getString(AppConstants.zoneId)??'');
     backendLanguageUpdate();
   }
+  
 
-  void loadCurrentLanguage() async {
-    _locale = Locale(sharedPreferences.getString(AppConstants.languageCode) ?? AppConstants.languages[1].languageCode,
-        sharedPreferences.getString(AppConstants.countryCode) ?? AppConstants.languages[1].countryCode);
-    _isLtr = !intl.Bidi.isRtlLanguage(_locale.languageCode);
-    update();
+ void loadCurrentLanguage() async {
+
+  String languageCode =
+      sharedPreferences.getString(AppConstants.languageCode)
+          ?? AppConstants.languages[0].languageCode;
+
+  String countryCode =
+      sharedPreferences.getString(AppConstants.countryCode)
+          ?? AppConstants.languages[0].countryCode!;
+
+  /// Fix old saved locale
+  if (languageCode == 'ar' && countryCode == 'US') {
+    countryCode = 'SA';
   }
+
+  _locale = Locale(languageCode, countryCode);
+
+  _isLtr = !intl.Bidi.isRtlLanguage(_locale.languageCode);
+
+  update();
+}
 
   void saveLanguage(Locale locale) async {
     sharedPreferences.setString(AppConstants.languageCode, locale.languageCode);

@@ -10,7 +10,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
+import '../domain/models/simple_passenger_model.dart';
 import '../domain/models/simple_trip_model.dart';
+import 'passenger_map_marker_helper.dart';
 
 class CarpoolMainMapController extends GetxController {
   final SimpleTripModel carpoolTrip;
@@ -356,60 +358,94 @@ class CarpoolMainMapController extends GetxController {
       );
     }
 
-    // Passenger pickup markers only
-    print('=== Creating passenger pickup markers ===');
-    print(
-        '=== Passenger coordinates count: ${carpoolTrip.passengerCoordinates?.length ?? 0} ===');
+    await _addPassengerPickupMarkers();
+
+    print('=== Total markers created: ${_markers.length} ===');
+    update();
+  }
+
+  SimplePassengerModel? _findPassenger(String? passengerId) {
+    if (passengerId == null || carpoolTrip.passengers == null) return null;
+    for (final passenger in carpoolTrip.passengers!) {
+      if (passenger.carpoolTripId == passengerId ||
+          passenger.id?.toString() == passengerId) {
+        return passenger;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _addPassengerPickupMarkers() async {
+    print('=== Creating passenger pickup markers with avatars ===');
+    final addedPassengerIds = <String>{};
 
     if (carpoolTrip.passengerCoordinates != null) {
       for (int i = 0; i < carpoolTrip.passengerCoordinates!.length; i++) {
         final passengerCoord = carpoolTrip.passengerCoordinates![i];
-
-        // Only show pickup coordinates
-        if (passengerCoord.isPickup && passengerCoord.hasValidCoordinates) {
-          print(
-              '=== Passenger pickup coord $i: coords=${passengerCoord.coordinates} ===');
-
-          final latLng = LatLng(
-            passengerCoord.coordinates![0], // longitude
-            passengerCoord.coordinates![1], // latitude
-          );
-
-          print(
-              '=== Adding pickup marker: ${latLng.latitude}, ${latLng.longitude} ===');
-
-          // Find passenger data for this pickup
-          String passengerInfo = 'Unknown Passenger';
-          if (carpoolTrip.passengers != null) {
-            for (final passenger in carpoolTrip.passengers!) {
-              if (passenger.carpoolTripId == passengerCoord.passengerId) {
-                passengerInfo =
-                    '${passenger.name ?? 'Unknown'} (${passenger.seatsCount ?? 1} seats)';
-                break;
-              }
-            }
-          }
-
-          _markers.add(
-            Marker(
-              markerId:
-                  MarkerId('passenger_pickup_${passengerCoord.passengerId}'),
-              position: latLng,
-              infoWindow: InfoWindow(
-                title: 'Pickup - $passengerInfo',
-                snippet:
-                    '${passengerCoord.address ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerCoord.passengerId ?? '')}',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueYellow),
-            ),
-          );
+        if (!passengerCoord.isPickup || !passengerCoord.hasValidCoordinates) {
+          continue;
         }
+
+        final coords = passengerCoord.coordinates;
+        if (coords == null || coords.length < 2) continue;
+
+        final passengerId = passengerCoord.passengerId ?? 'idx_$i';
+        if (addedPassengerIds.contains(passengerId)) continue;
+
+        final passenger = _findPassenger(passengerCoord.passengerId);
+        final passengerInfo = passenger != null
+            ? '${passenger.name ?? 'Unknown'} (${passenger.seatsCount ?? 1} seats)'
+            : 'Unknown Passenger';
+        final icon = passenger != null
+            ? await PassengerMapMarkerHelper.fromPassenger(passenger)
+            : await PassengerMapMarkerHelper.placeholder();
+
+        _markers.add(
+          Marker(
+            markerId: MarkerId('passenger_pickup_$passengerId'),
+            position: LatLng(coords[0], coords[1]),
+            anchor: const Offset(0.5, 0.5),
+            infoWindow: InfoWindow(
+              title: 'Pickup - $passengerInfo',
+              snippet:
+                  '${passengerCoord.address ?? passenger?.pickupAddress ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerId)}',
+            ),
+            icon: icon,
+          ),
+        );
+        addedPassengerIds.add(passengerId);
       }
     }
 
-    print('=== Total markers created: ${_markers.length} ===');
-    update();
+    if (carpoolTrip.passengers != null) {
+      for (final passenger in carpoolTrip.passengers!) {
+        final passengerId =
+            passenger.carpoolTripId ?? passenger.id?.toString() ?? '';
+        if (passengerId.isEmpty || addedPassengerIds.contains(passengerId)) {
+          continue;
+        }
+
+        final coords =
+            passenger.closestPickupPoint ?? passenger.pickupCoordinates;
+        if (coords == null || coords.length < 2) continue;
+
+        final icon = await PassengerMapMarkerHelper.fromPassenger(passenger);
+        _markers.add(
+          Marker(
+            markerId: MarkerId('passenger_pickup_$passengerId'),
+            position: LatLng(coords[0], coords[1]),
+            anchor: const Offset(0.5, 0.5),
+            infoWindow: InfoWindow(
+              title: 'Pickup - ${passenger.name ?? 'Unknown'}',
+              snippet:
+                  passenger.displayPickupAddress(carpoolTrip.startAddress),
+            ),
+            icon: icon,
+          ),
+        );
+        addedPassengerIds.add(passengerId);
+      }
+    }
   }
 
   void _createPolylines() {

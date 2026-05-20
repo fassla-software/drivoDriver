@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -206,13 +207,36 @@ class AuthController extends GetxController implements GetxService {
 
 
 
-  Future<void> register(String code, SignUpBody signUpBody) async {
-    final ConfigModel? configModel = Get.find<SplashController>().config;
+Future<void> register(String code, SignUpBody signUpBody) async {
+  final ConfigModel? configModel =
+      Get.find<SplashController>().config;
 
-    _isLoading = true;
-    update();
-    Response? response = await authServiceInterface.registration(signUpBody: signUpBody,profileImage: pickedProfileFile,identityImage: multipartList);
-    if(response!.statusCode == 200){
+  // ================= VALIDATION =================
+
+  if (pickedProfileFile == null) {
+    showCustomSnackBar("من فضلك اختار صورة شخصية");
+    return;
+  }
+
+  if (identityImages.isEmpty || identityImages.length < 2) {
+    showCustomSnackBar("من فضلك ارفع صورة الهوية ");
+    return;
+  }
+
+  _isLoading = true;
+  update();
+
+  try {
+    Response? response = await authServiceInterface.registration(
+      signUpBody: signUpBody,
+      profileImage: pickedProfileFile,
+      identityImage: multipartList,
+    );
+
+    // ================= SUCCESS =================
+
+    if (response != null && response.statusCode == 200) {
+
       fNameController.clear();
       lNameController.clear();
       passwordController.clear();
@@ -221,42 +245,115 @@ class AuthController extends GetxController implements GetxService {
       emailController.clear();
       addressController.clear();
       identityNumberController.clear();
+      referralCodeController.clear();
+
       _pickedProfileFile = null;
       identityImages.clear();
       multipartList.clear();
-      referralCodeController.clear();
+
       _isLoading = false;
 
-      if(configModel?.verification ?? false){
+      if (configModel?.verification ?? false) {
+
         if (configModel?.isFirebaseOtpVerification ?? false) {
+
           Get.find<AuthController>().firebaseOtpSend(
             countryCode: code,
             number: signUpBody.phone?.replaceAll(code, '') ?? '',
             from: VerificationForm.login,
           );
 
-        } else if(configModel?.isSmsGateway ?? false){
-          Get.to(()=> VerificationScreen(
-            countryCode: code,
-            number: signUpBody.phone?.replaceAll(code, '') ?? '',
-            form: VerificationForm.login,
-          ));
+        } else if (configModel?.isSmsGateway ?? false) {
 
-        }else{
-        showCustomSnackBar('sms_gateway_not_integrate'.tr);
+          Get.to(() => VerificationScreen(
+                countryCode: code,
+                number: signUpBody.phone?.replaceAll(code, '') ?? '',
+                form: VerificationForm.login,
+              ));
+
+        } else {
+          showCustomSnackBar('sms_gateway_not_integrate'.tr);
+        }
+
+      } else {
+        showCustomSnackBar(
+          'registration_completed_successfully'.tr,
+          isError: false,
+        );
+
+        Get.offAll(() => const SignInScreen());
       }
 
-      }else{
-        showCustomSnackBar('registration_completed_successfully'.tr, isError: false);
-        Get.offAll(()=> const SignInScreen());
-      }
-      Get.find<ProfileController>().updateFirstTimeShowBottomSheet(true);
-    }else{
+      Get.find<ProfileController>()
+          .updateFirstTimeShowBottomSheet(true);
+
+    } else {
+      // ================= ERROR =================
+
       _isLoading = false;
-      ApiChecker.checkApi(response);
+
+      final body = response?.body;
+
+      if (body != null &&
+          body['errors'] != null &&
+          body['errors'].isNotEmpty) {
+
+        List errors = body['errors'];
+
+        String errorMessage = errors.map((e) {
+          return mapError(e['error_code'], e['message']);
+        }).join("\n");
+
+        // ⛔ حل مشكلة اختفاء الرسالة بسبب UI timing
+        Future.delayed(const Duration(milliseconds: 100), () {
+          showCustomSnackBar(errorMessage);
+        });
+
+      } else {
+        showCustomSnackBar("حصل خطأ غير متوقع");
+      }
     }
-    update();
+
+  } catch (e) {
+    _isLoading = false;
+
+    showCustomSnackBar("حدث خطأ غير متوقع");
+
+    if (kDebugMode) {
+      print("REGISTER ERROR: $e");
+    }
   }
+
+  _isLoading = false;
+  update();
+}
+
+String mapError(String code, String message) {
+  switch (code) {
+
+    case 'phone':
+      return "رقم الموبايل مستخدم بالفعل";
+
+    case 'email':
+      return "البريد الإلكتروني مستخدم بالفعل";
+
+    case 'password':
+      return "كلمة المرور ضعيفة";
+
+    case 'profile_image':
+      return "الصورة الشخصية مطلوبة";
+
+  
+    case 'identity_image_front':
+      return "صورة الهوية (الوش) مطلوبة";
+
+    case 'identity_image_back':
+      return "صورة الهوية (الظهر) مطلوبة";
+
+    default:
+      return message; // fallback
+  }
+}
 
 
   _navigateLogin(String code,String phone, String password){

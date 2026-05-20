@@ -6,6 +6,7 @@ class SimplePassengerModel {
   String? name;
   String? profileImage;
   int? seatsCount;
+  double? price;
   double? fare;
   String? status;
   String? pickupAddress;
@@ -13,6 +14,7 @@ class SimplePassengerModel {
   List<double>? pickupCoordinates;
   List<double>? closestPickupPoint;
   List<double>? dropoffCoordinates;
+
   String? phone;
   String? email;
   String? carpoolTripId;
@@ -22,6 +24,7 @@ class SimplePassengerModel {
     this.name,
     this.profileImage,
     this.seatsCount,
+    this.price,
     this.closestPickupPoint,
     this.fare,
     this.status,
@@ -38,13 +41,16 @@ class SimplePassengerModel {
     print('=== SimplePassengerModel.fromJson: $json ===');
     return SimplePassengerModel(
       id: json['id'],
+      price: json['price']?.toDouble(),
       name: json['name'],
       profileImage: json['profile_image'],
       seatsCount: json['seats_count'],
       fare: json['fare']?.toDouble(),
       status: json['status'],
-      pickupAddress: json['pickup_address'],
-      dropoffAddress: json['dropoff_address'],
+      pickupAddress: json['pickup_address']?.toString() ??
+          json['start_address']?.toString(),
+      dropoffAddress: json['dropoff_address']?.toString() ??
+          json['end_address']?.toString(),
       pickupCoordinates: json['pickup_coordinates'] != null
           ? List<double>.from(json['pickup_coordinates'])
           : null,
@@ -67,6 +73,7 @@ class SimplePassengerModel {
       'profile_image': profileImage,
       'seats_count': seatsCount,
       'fare': fare,
+      'price': price,
       'status': status,
       'pickup_address': pickupAddress,
       'dropoff_address': dropoffAddress,
@@ -77,11 +84,41 @@ class SimplePassengerModel {
       'carpool_trip_id': carpoolTripId,
     };
   }
+String? get fullProfileImage {
+  final img = profileImage;
+
+  if (img == null || img.trim().isEmpty) return null;
+
+  if (img.startsWith('http')) return img;
+
+  return 'https://drivoeg.com/storage/app/public/customer/profile/$img';
+}
+
+  String? _firstNonEmpty(Iterable<String?> values) {
+    for (final value in values) {
+      final trimmed = value?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) return trimmed;
+    }
+    return null;
+  }
+
+  /// Pickup text for UI — passenger address, then trip start, then placeholder.
+  String displayPickupAddress(String? tripStartAddress) {
+    return _firstNonEmpty([pickupAddress, tripStartAddress]) ??
+        'location_not_available'.tr;
+  }
+
+  /// Dropoff text for UI — passenger address, then trip end, then placeholder.
+  String displayDropoffAddress(String? tripEndAddress) {
+    return _firstNonEmpty([dropoffAddress, tripEndAddress]) ??
+        'location_not_available'.tr;
+  }
 
   // Helper methods
-  String get formattedFare {
-    return '${fare?.toStringAsFixed(2) ?? '0'} EGP';
-  }
+String get formattedFare {
+  final value = fare ?? price ?? 0;
+  return '${value.toStringAsFixed(2)} EGP';
+}
 
   String get statusDisplayText {
     switch (status?.toLowerCase()) {

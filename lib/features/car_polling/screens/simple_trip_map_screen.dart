@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'dart:math' as math;
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
+
 
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../util/dimensions.dart';
+import '../../../util/images.dart';
 import '../../../util/styles.dart';
-import '../../../helper/display_helper.dart';
-import '../../../helper/route_helper.dart';
+
 import 'carpool_main_map_screen.dart';
 import '../domain/models/simple_trip_model.dart';
 import '../domain/models/simple_passenger_model.dart';
 import '../controllers/simple_trip_map_controller.dart';
-import '../controllers/simple_trip_otp_controller.dart';
+import '../widgets/passenger_route_info_widget.dart';
 import '../widgets/simple_trip_otp_widget.dart';
 
 class SimpleTripMapScreen extends StatefulWidget {
@@ -751,115 +748,156 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
     );
   }
 
-  Widget _buildPassengerCard(SimplePassengerModel passenger) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
-      padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Passenger Header
-          Row(
-            children: [
-              // Profile Image
-              CircleAvatar(
-                radius: 20,
-                backgroundColor:
-                    Theme.of(context).primaryColor.withOpacity(0.1),
-                backgroundImage: passenger.profileImage != null
-                    ? NetworkImage(passenger.profileImage!)
-                    : null,
-                child: passenger.profileImage == null
-                    ? Icon(
-                        Icons.person,
-                        color: Theme.of(context).primaryColor,
-                        size: 20,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: Dimensions.paddingSizeSmall),
-              // Passenger Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      passenger.name ?? 'unknown_passenger'.tr,
-                      style: textMedium.copyWith(
-                        fontSize: Dimensions.fontSizeDefault,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.event_seat,
-                          color: Theme.of(context).primaryColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${passenger.seatsCount ?? 1} ${'seats'.tr}',
-                          style: textRegular.copyWith(
-                            fontSize: Dimensions.fontSizeSmall,
-                            color: Theme.of(context).hintColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              // OTP Button
-              ElevatedButton.icon(
-                onPressed: () => _showOtpVerificationDialog(passenger),
-                icon: const Icon(Icons.verified_user, size: 16),
-                label: Text(
-                  'OTP',
-                  style:
-                      textMedium.copyWith(fontSize: Dimensions.fontSizeSmall),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Dimensions.paddingSizeSmall,
-                    vertical: Dimensions.paddingSizeExtraSmall,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(Dimensions.paddingSizeSmall),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Status Badge
-          const SizedBox(height: Dimensions.paddingSizeSmall),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: passenger.statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: passenger.statusColor),
-            ),
-            child: Text(
-              passenger.statusDisplayText,
-              style: textRegular.copyWith(
-                fontSize: Dimensions.fontSizeExtraSmall,
-                color: passenger.statusColor,
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _passengerAvatar(SimplePassengerModel passenger) {
+    final imageUrl = passenger.fullProfileImage;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        },
+        errorBuilder: (_, __, ___) => Image.asset(
+          Images.personPlaceholder,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+    return Image.asset(
+      Images.personPlaceholder,
+      width: 40,
+      height: 40,
+      fit: BoxFit.cover,
     );
   }
+
+  Widget _buildPassengerCard(SimplePassengerModel passenger) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+    padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
+      border: Border.all(color: Theme.of(context).dividerColor),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+
+            /// Avatar FIXED
+            CircleAvatar(
+              radius: 20,
+              backgroundColor:
+                  Theme.of(context).primaryColor.withOpacity(0.1),
+
+              child: ClipOval(
+                child: _passengerAvatar(passenger),
+              ),
+            ),
+
+            const SizedBox(width: Dimensions.paddingSizeSmall),
+
+            /// Info + locations (always visible beside passenger)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    passenger.name ?? 'unknown_passenger'.tr,
+                    style: textMedium.copyWith(
+                      fontSize: Dimensions.fontSizeDefault,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.event_seat,
+                        color: Theme.of(context).primaryColor,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${passenger.seatsCount ?? 1} ${'seats'.tr}',
+                        style: textRegular.copyWith(
+                          fontSize: Dimensions.fontSizeSmall,
+                          color: Theme.of(context).hintColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.payments_outlined,
+                        size: 14,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        passenger.formattedFare,
+                        style: textBold.copyWith(
+                          fontSize: Dimensions.fontSizeSmall,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  PassengerRouteInfoWidget(
+                    passenger: passenger,
+                    tripStartAddress: widget.trip.startAddress,
+                    tripEndAddress: widget.trip.endAddress,
+                    compact: true,
+                  ),
+                ],
+              ),
+            ),
+
+            /// OTP Button
+            ElevatedButton.icon(
+              onPressed: () => _showOtpVerificationDialog(passenger),
+              icon: const Icon(Icons.verified_user, size: 16),
+              label: Text(
+                'OTP',
+                style: textMedium.copyWith(
+                  fontSize: Dimensions.fontSizeSmall,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: Dimensions.paddingSizeSmall),
+
+        /// Status
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: passenger.statusColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: passenger.statusColor),
+          ),
+          child: Text(
+            passenger.statusDisplayText,
+            style: textRegular.copyWith(
+              fontSize: Dimensions.fontSizeExtraSmall,
+              color: passenger.statusColor,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showOtpVerificationDialog(SimplePassengerModel passenger) {
     // تأكد من وجود carpool_trip_id
@@ -868,10 +906,6 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
       return;
     }
 
-    // إنشاء كونترولر OTP جديد
-    final otpController = Get.put(SimpleTripOtpController(
-      rideServiceInterface: Get.find(),
-    ));
 
     showDialog(
       context: context,

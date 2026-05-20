@@ -157,4 +157,9 @@ class RegisterRouteRepository implements RegisterRouteRepositoryInterface {
     // TODO: implement update
     throw UnimplementedError();
   }
+
+  @override
+  Future<Response> getBoardingPoints() async {
+    return await apiClient.getData(AppConstants.boardingPointsUri);
+  }
 }

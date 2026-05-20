@@ -7,12 +7,38 @@ import '../domain/models/register_route_response_model.dart';
 import '../domain/models/rest_stop_model.dart';
 import '../domain/services/register_route_service_interface.dart';
 
+class City {
+  final int id;
+  final String name;
+  final String nameAr;
+  const City({required this.id, required this.name, required this.nameAr});
+}
+
+class BoardingPoint {
+  final int id;
+  final String name;
+  final String nameAr;
+  final int cityId;
+  const BoardingPoint({
+    required this.id,
+    required this.name,
+    required this.nameAr,
+    required this.cityId,
+  });
+}
+
 class RegisterRouteController extends GetxController {
   final RegisterRouteServiceInterface registerRouteServiceInterface;
   Function(String message, Color backgroundColor,
       {IconData icon, Duration duration})? onShowSnackBar;
 
   RegisterRouteController({required this.registerRouteServiceInterface});
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchBoardingPoints();
+  }
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -105,6 +131,10 @@ class RegisterRouteController extends GetxController {
   final TextEditingController minAgeController = TextEditingController();
   final TextEditingController maxAgeController = TextEditingController();
 
+  // Routine-specific controllers
+  final TextEditingController departureTimeController = TextEditingController();
+  final TextEditingController returnTimeController = TextEditingController();
+
   // Form values
   String _rideType = 'work';
   String get rideType => _rideType;
@@ -139,6 +169,125 @@ class RegisterRouteController extends GetxController {
   // Polyline encoding
   String _encodedPolyline = '';
   String get encodedPolyline => _encodedPolyline;
+
+  // Cascaded dropdown data
+  List<City> cities = [];
+  List<BoardingPoint> boardingPoints = [];
+  bool isLoadingBoardingPoints = false;
+
+  List<String> _splitString(String value) {
+    final regex = RegExp(r'\s*-\s*|\s+to\s+');
+    final parts = value.split(regex);
+    return parts.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  }
+
+  Future<void> fetchBoardingPoints() async {
+    isLoadingBoardingPoints = true;
+    update();
+    try {
+      final response = await registerRouteServiceInterface.getBoardingPoints();
+      if (response.statusCode == 200) {
+        final List<dynamic> rawList = response.body['data'] as List? ?? [];
+        final List<BoardingPoint> loadedBoardingPoints = [];
+        final Set<String> cityNames = {};
+        final Map<String, int> cityIdMap = {};
+        
+        int nextCityId = 1;
+
+        for (var e in rawList) {
+          final int id = e['id'] is int ? e['id'] : int.parse((e['id'] ?? '0').toString());
+          final String name = e['name'] ?? '';
+          final String nameAr = e['name_ar'] ?? '';
+
+          final partsEn = _splitString(name);
+          final partsAr = _splitString(nameAr);
+
+          final String cityNameEn = partsEn.isNotEmpty ? partsEn.first : 'Unknown';
+          final String cityNameAr = partsAr.isNotEmpty ? partsAr.first : 'غير معروف';
+
+          final String areaNameEn = partsEn.length > 1 ? partsEn.sublist(1).join(' - ') : name;
+          final String areaNameAr = partsAr.length > 1 ? partsAr.sublist(1).join(' - ') : nameAr;
+
+          if (!cityNames.contains(cityNameEn)) {
+            cityNames.add(cityNameEn);
+            cityIdMap[cityNameEn] = nextCityId++;
+          }
+
+          final int cityId = cityIdMap[cityNameEn]!;
+
+          loadedBoardingPoints.add(BoardingPoint(
+            id: id,
+            name: areaNameEn,
+            nameAr: areaNameAr,
+            cityId: cityId,
+          ));
+        }
+
+        final List<City> loadedCities = [];
+        cityIdMap.forEach((cityNameEn, cityId) {
+          final matchingPoint = rawList.firstWhere(
+            (e) {
+              final parts = _splitString(e['name'] ?? '');
+              return parts.isNotEmpty && parts.first == cityNameEn;
+            },
+            orElse: () => null,
+          );
+          String cityNameAr = cityNameEn;
+          if (matchingPoint != null) {
+            final partsAr = _splitString(matchingPoint['name_ar'] ?? '');
+            if (partsAr.isNotEmpty) {
+              cityNameAr = partsAr.first;
+            }
+          }
+
+          loadedCities.add(City(
+            id: cityId,
+            name: cityNameEn,
+            nameAr: cityNameAr,
+          ));
+        });
+
+        cities = loadedCities;
+        boardingPoints = loadedBoardingPoints;
+        print('====> Successfully loaded ${cities.length} cities and ${boardingPoints.length} boarding points dynamically.');
+      } else {
+        print('====> Failed to load boarding points from backend: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('====> Error fetching boarding points: $e');
+    } finally {
+      isLoadingBoardingPoints = false;
+      update();
+    }
+  }
+
+  // Cascaded selection state
+  City? selectedStartCity;
+  BoardingPoint? selectedStartBoardingPoint;
+  City? selectedEndCity;
+  BoardingPoint? selectedEndBoardingPoint;
+
+  void setStartCity(City? city) {
+    selectedStartCity = city;
+    selectedStartBoardingPoint = null;
+    update();
+  }
+
+  void setStartBoardingPoint(BoardingPoint? bp) {
+    selectedStartBoardingPoint = bp;
+    update();
+  }
+
+  void setEndCity(City? city) {
+    selectedEndCity = city;
+    selectedEndBoardingPoint = null;
+    update();
+  }
+
+  void setEndBoardingPoint(BoardingPoint? bp) {
+    selectedEndBoardingPoint = bp;
+    update();
+  }
 
   void setRideType(String type) {
     _rideType = type;
@@ -203,37 +352,65 @@ class RegisterRouteController extends GetxController {
   }
 
   Future<void> registerRoute() async {
-    // Show debug dialog with all collected data first
-    await _showDataPreviewDialog();
+    await _proceedWithRegistration();
   }
 
   bool _validateForm() {
-    // Validate coordinates
-    if (startLatController.text.isEmpty || startLngController.text.isEmpty) {
-      _showValidationError('please_select_starting_point'.tr);
-      return false;
-    }
+    final String type = _rideType == 'single' ? 'trip' : _rideType;
 
-    if (endLatController.text.isEmpty || endLngController.text.isEmpty) {
-      _showValidationError('please_select_destination'.tr);
-      return false;
-    }
+    if (type == 'travel') {
+      if (selectedStartBoardingPoint == null) {
+        _showValidationError('please_select_starting_point'.tr.isNotEmpty 
+            ? 'please_select_starting_point'.tr 
+            : 'Please select starting boarding point');
+        return false;
+      }
+      if (selectedEndBoardingPoint == null) {
+        _showValidationError('please_select_destination'.tr.isNotEmpty
+            ? 'please_select_destination'.tr
+            : 'Please select destination boarding point');
+        return false;
+      }
+    } else {
+      // Validate coordinates
+      if (startLatController.text.isEmpty || startLngController.text.isEmpty) {
+        _showValidationError('please_select_starting_point'.tr);
+        return false;
+      }
 
-    // Validate coordinates are valid numbers
-    try {
-      double.parse(startLatController.text);
-      double.parse(startLngController.text);
-      double.parse(endLatController.text);
-      double.parse(endLngController.text);
-    } catch (e) {
-      _showValidationError('invalid_coordinates_please_use_map_picker'.tr);
-      return false;
+      if (endLatController.text.isEmpty || endLngController.text.isEmpty) {
+        _showValidationError('please_select_destination'.tr);
+        return false;
+      }
+
+      // Validate coordinates are valid numbers
+      try {
+        double.parse(startLatController.text);
+        double.parse(startLngController.text);
+        double.parse(endLatController.text);
+        double.parse(endLngController.text);
+      } catch (e) {
+        _showValidationError('invalid_coordinates_please_use_map_picker'.tr);
+        return false;
+      }
     }
 
     // Validate start time
     if (startTimeController.text.isEmpty) {
       _showValidationError('please_select_departure_time'.tr);
       return false;
+    }
+
+    // Validate routine-specific fields
+    if (type == 'routine') {
+      if (departureTimeController.text.isEmpty) {
+        _showValidationError('Please enter departure time');
+        return false;
+      }
+      if (returnTimeController.text.isEmpty) {
+        _showValidationError('Please enter return time');
+        return false;
+      }
     }
 
     // Validate price
@@ -269,12 +446,6 @@ class RegisterRouteController extends GetxController {
       _showValidationError('please_enter_valid_number_of_seats'.tr);
       return false;
     }
-
-    // Validate vehicle ID
-    // if (vehicleIdController.text.isEmpty) {
-    //   _showValidationError('please_enter_vehicle_id'.tr);
-    //   return false;
-    // }
 
     // Validate age limits if provided
     if (minAgeController.text.isNotEmpty || maxAgeController.text.isNotEmpty) {
@@ -347,6 +518,8 @@ class RegisterRouteController extends GetxController {
     seatsController.clear();
     minAgeController.clear();
     maxAgeController.clear();
+    departureTimeController.clear();
+    returnTimeController.clear();
 
     // Reset dropdown values
     _rideType = 'work';
@@ -365,6 +538,12 @@ class RegisterRouteController extends GetxController {
     // Reset recurrence
     _recurrenceType = 'once';
     _selectedDates.clear();
+
+    // Reset boarding points
+    selectedStartCity = null;
+    selectedStartBoardingPoint = null;
+    selectedEndCity = null;
+    selectedEndBoardingPoint = null;
 
     update();
   }
@@ -419,45 +598,45 @@ class RegisterRouteController extends GetxController {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildDataSection('🎯 Route Information', [
-                        'Start: ${data['startCoordinates']['lat']}, ${data['startCoordinates']['lng']}',
-                        'End: ${data['endCoordinates']['lat']}, ${data['endCoordinates']['lng']}',
+                        if (_rideType == 'travel') ...[
+                          'Start Boarding Point: ${selectedStartBoardingPoint?.name ?? ''} (${selectedStartCity?.name ?? ''})',
+                          'End Boarding Point: ${selectedEndBoardingPoint?.name ?? ''} (${selectedEndCity?.name ?? ''})',
+                        ] else ...[
+                          'Start: ${data['startCoordinates']['lat']}, ${data['startCoordinates']['lng']}',
+                          'End: ${data['endCoordinates']['lat']}, ${data['endCoordinates']['lng']}',
+                        ],
                         'Departure: ${data['startTime']}',
+                        if (_rideType == 'routine') ...[
+                          'Routine Departure: ${departureTimeController.text}',
+                          'Routine Return: ${returnTimeController.text}',
+                        ],
                       ]),
                       _buildDataSection('🚗 Vehicle & Pricing', [
                         'Price per seat: ${data['price']} EGP',
                         'Available seats: ${data['seats']}',
-                        'Ride type: ${data['rideType']}',
                       ]),
-                      _buildDataSection('👥 Passenger Preferences', [
-                        'Min age: ${data['ageRestrictions']['minAge']}',
-                        'Max age: ${data['ageRestrictions']['maxAge']}',
-                        'Allowed gender: ${data['allowedGender']}',
-                      ]),
+                      if (_rideType == 'trip' || _rideType == 'single' || _rideType == 'travel')
+                        _buildDataSection('👥 Passenger Preferences', [
+                          'Min age: ${data['ageRestrictions']['minAge']}',
+                          'Max age: ${data['ageRestrictions']['maxAge']}',
+                          'Allowed gender: ${data['allowedGender']}',
+                        ]),
                       _buildDataSection('✨ Vehicle Features', [
                         'AC: ${data['features']['isAc'] ? 'Yes' : 'No'}',
-                        'Smoking: ${data['features']['isSmokingAllowed'] ? 'Yes' : 'No'}',
-                        'Music: ${data['features']['hasMusic'] ? 'Yes' : 'No'}',
-                        'Entertainment: ${data['features']['hasScreenEntertainment'] ? 'Yes' : 'No'}',
-                        'Luggage: ${data['features']['allowLuggage'] ? 'Yes' : 'No'}',
+                        if (_rideType != 'travel') ...[
+                          'Smoking: ${data['features']['isSmokingAllowed'] ? 'Yes' : 'No'}',
+                          'Music: ${data['features']['hasMusic'] ? 'Yes' : 'No'}',
+                          'Entertainment: ${data['features']['hasScreenEntertainment'] ? 'Yes' : 'No'}',
+                          'Luggage: ${data['features']['allowLuggage'] ? 'Yes' : 'No'}',
+                        ],
                       ]),
-                      if (data['restStops'].isNotEmpty)
+                      if (data['restStops'].isNotEmpty && _rideType != 'travel' && _rideType != 'routine' && _rideType != 'north_coast')
                         _buildDataSection(
                             '🛑 Rest Stops',
                             (data['restStops'] as List)
                                 .map((stop) =>
                                     '${stop['name']}: ${stop['lat']}, ${stop['lng']}')
                                 .toList()),
-                      _buildDataSection('📅 Recurrence', [
-                        'Type: ${data['recurrenceType']}',
-                        if (data['recurrenceType'] == 'repeated')
-                          'Dates: ${(data['selectedDates'] as List).length} selected',
-                      ]),
-                      _buildDataSection('🗺️ Route Polyline', [
-                        'Status: ${data['encodedPolyline'].isNotEmpty ? 'Generated' : 'Not generated'}',
-                        'Length: ${data['encodedPolyline'].length} characters',
-                        if (data['encodedPolyline'].isNotEmpty)
-                          'Preview: ${data['encodedPolyline'].length > 30 ? '${data['encodedPolyline'].substring(0, 30)}...' : data['encodedPolyline']}',
-                      ]),
                     ],
                   ),
                 ),
@@ -547,18 +726,21 @@ class RegisterRouteController extends GetxController {
       return;
     }
 
-    // Note: Encoded polyline generation removed - backend will handle route calculation
-
     _isLoading = true;
     update();
 
     try {
+      final double? startLat = startLatController.text.isNotEmpty ? double.parse(startLatController.text) : null;
+      final double? startLng = startLngController.text.isNotEmpty ? double.parse(startLngController.text) : null;
+      final double? endLat = endLatController.text.isNotEmpty ? double.parse(endLatController.text) : null;
+      final double? endLng = endLngController.text.isNotEmpty ? double.parse(endLngController.text) : null;
+
       // Prepare the request model with all collected data
       final requestModel = RegisterRouteRequestModel(
-        startLat: double.parse(startLatController.text),
-        startLng: double.parse(startLngController.text),
-        endLat: double.parse(endLatController.text),
-        endLng: double.parse(endLngController.text),
+        startLat: startLat,
+        startLng: startLng,
+        endLat: endLat,
+        endLng: endLng,
         startTime: startTimeController.text,
         price: double.parse(priceController.text),
         vehicleId: vehicleIdController.text,
@@ -582,6 +764,15 @@ class RegisterRouteController extends GetxController {
             .map((date) =>
                 "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}")
             .toList(),
+
+        // Travel-specific fields
+        boardingPointStartId: selectedStartBoardingPoint?.id,
+        boardingPointEndId: selectedEndBoardingPoint?.id,
+        isAcBool: _isAc,
+
+        // Routine-specific fields
+        departureTime: departureTimeController.text.isNotEmpty ? departureTimeController.text : null,
+        returnTime: returnTimeController.text.isNotEmpty ? returnTimeController.text : null,
       );
 
       // Call the API service
@@ -608,13 +799,12 @@ class RegisterRouteController extends GetxController {
         // Success
         await _showSnackbar(
           title: 'success'.tr,
-          message: _registerRouteResponse!.message,
+          message: _registerRouteResponse!.message.isNotEmpty
+              ? _registerRouteResponse!.message
+              : 'Route registered successfully'.tr,
           backgroundColor: Colors.green,
           icon: Icons.check_circle,
         );
-
-        // Clear the form
-        // _clearForm();
 
         // Navigate back or to a success screen
         if (Get.context != null) {
@@ -920,6 +1110,8 @@ class RegisterRouteController extends GetxController {
     seatsController.dispose();
     minAgeController.dispose();
     maxAgeController.dispose();
+    departureTimeController.dispose();
+    returnTimeController.dispose();
     super.onClose();
   }
 }

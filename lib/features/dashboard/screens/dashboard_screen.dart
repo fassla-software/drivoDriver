@@ -223,7 +223,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Positioned(
                   child: Align(
                       alignment: Alignment.bottomCenter,
-                      child: Padding(
+                      child: SafeArea(
+                        top: false,
+                        child: Padding(
                           padding: const EdgeInsets.all(
                               Dimensions.paddingSizeDefault),
                           child: Container(
@@ -235,13 +237,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     BoxShadow(
                                         offset: const Offset(0, 4),
                                         blurRadius: 3,
-                                        color: Colors.black.withOpacity(0.3))
+                                        color: Colors.black)
                                   ]),
                               child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: generateBottomNavigationItems(
-                                      menuController, item))))))
+                                      menuController, item))))))),
             ],
           ),
         );

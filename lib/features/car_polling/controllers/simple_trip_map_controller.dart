@@ -5,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
+import '../domain/models/simple_passenger_model.dart';
 import '../domain/models/simple_trip_model.dart';
+import 'passenger_map_marker_helper.dart';
 
 class SimpleTripMapController extends GetxController {
   final SimpleTripModel trip;
@@ -155,8 +157,8 @@ class SimpleTripMapController extends GetxController {
       // Get current location
       await _getCurrentLocation();
 
-      // Create markers
-      _createMarkers();
+      // Create markers (passenger avatars on map)
+      await _createMarkers();
 
       // Create polylines
       _createPolylines();
@@ -218,7 +220,26 @@ class SimpleTripMapController extends GetxController {
     }
   }
 
-  void _createMarkers() {
+  SimplePassengerModel? _findPassenger(String? passengerId) {
+    if (passengerId == null || trip.passengers == null) return null;
+    for (final passenger in trip.passengers!) {
+      if (passenger.carpoolTripId == passengerId ||
+          passenger.id?.toString() == passengerId) {
+        return passenger;
+      }
+    }
+    return null;
+  }
+
+  Future<BitmapDescriptor> _passengerMarkerIcon(
+      SimplePassengerModel? passenger) async {
+    if (passenger != null) {
+      return PassengerMapMarkerHelper.fromPassenger(passenger);
+    }
+    return PassengerMapMarkerHelper.placeholder();
+  }
+
+  Future<void> _createMarkers() async {
     _markers.clear();
 
     // Start marker
@@ -227,9 +248,7 @@ class SimpleTripMapController extends GetxController {
         Marker(
           markerId: const MarkerId('start'),
           position: LatLng(
-              trip.startCoordinates![0],
-              trip.startCoordinates![
-                  1]), // [longitude, latitude] -> (latitude, longitude)
+              trip.startCoordinates![0], trip.startCoordinates![1]),
           infoWindow: InfoWindow(
             title: 'Start',
             snippet: trip.startAddress ?? 'Start location',
@@ -245,10 +264,7 @@ class SimpleTripMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId('end'),
-          position: LatLng(
-              trip.endCoordinates![0],
-              trip.endCoordinates![
-                  1]), // [longitude, latitude] -> (latitude, longitude)
+          position: LatLng(trip.endCoordinates![0], trip.endCoordinates![1]),
           infoWindow: InfoWindow(
             title: 'End',
             snippet: trip.endAddress ?? 'End location',
@@ -258,76 +274,78 @@ class SimpleTripMapController extends GetxController {
       );
     }
 
-    // Driver marker
-    // if (_currentPosition != null) {
-    //   _markers.add(
-    //     Marker(
-    //       markerId: const MarkerId('driver'),
-    //       position:
-    //           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-    //       infoWindow: const InfoWindow(
-    //         title: 'Driver',
-    //         snippet: 'Your current location',
-    //       ),
-    //       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-    //     ),
-    //   );
-    // }
-
-    // Passenger pickup markers only
-    print('=== Creating passenger pickup markers ===');
-    print(
-        '=== Passenger coordinates count: ${trip.passengerCoordinates?.length ?? 0} ===');
+    print('=== Creating passenger pickup markers with avatars ===');
+    final addedPassengerIds = <String>{};
 
     if (trip.passengerCoordinates != null) {
       for (int i = 0; i < trip.passengerCoordinates!.length; i++) {
         final passengerCoord = trip.passengerCoordinates![i];
 
-        // Only show pickup coordinates
-        if (passengerCoord.isPickup && passengerCoord.hasValidCoordinates) {
-          print(
-              '=== Passenger pickup coord $i: coords=${passengerCoord.coordinates} ===');
-
-          final latLng = LatLng(
-            passengerCoord.coordinates![0], // longitude
-            passengerCoord.coordinates![1], // latitude
-          );
-
-          print(
-              '=== Adding pickup marker: ${latLng.latitude}, ${latLng.longitude} ===');
-
-          // Find passenger data for this pickup
-          String passengerInfo = 'Unknown Passenger';
-          if (trip.passengers != null) {
-            for (final passenger in trip.passengers!) {
-              if (passenger.carpoolTripId == passengerCoord.passengerId) {
-                passengerInfo =
-                    '${passenger.name ?? 'Unknown'} (${passenger.seatsCount ?? 1} seats)';
-                break;
-              }
-            }
-          }
-
-          _markers.add(
-            Marker(
-              markerId:
-                  MarkerId('passenger_pickup_${passengerCoord.passengerId}'),
-              position: latLng,
-              infoWindow: InfoWindow(
-                title: 'Pickup - $passengerInfo',
-                snippet:
-                    '${passengerCoord.address ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerCoord.passengerId ?? '')}',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueYellow),
-            ),
-          );
+        if (!passengerCoord.isPickup || !passengerCoord.hasValidCoordinates) {
+          continue;
         }
+
+        final coords = passengerCoord.coordinates;
+        if (coords == null || coords.length < 2) continue;
+
+        final latLng = LatLng(coords[0], coords[1]);
+        final passengerId = passengerCoord.passengerId ?? 'idx_$i';
+        if (addedPassengerIds.contains(passengerId)) continue;
+
+        final passenger = _findPassenger(passengerCoord.passengerId);
+        final passengerInfo = passenger != null
+            ? '${passenger.name ?? 'Unknown'} (${passenger.seatsCount ?? 1} seats)'
+            : 'Unknown Passenger';
+        final icon = await _passengerMarkerIcon(passenger);
+
+        _markers.add(
+          Marker(
+            markerId: MarkerId('passenger_pickup_$passengerId'),
+            position: latLng,
+            anchor: const Offset(0.5, 0.5),
+            infoWindow: InfoWindow(
+              title: 'Pickup - $passengerInfo',
+              snippet:
+                  '${passengerCoord.address ?? passenger?.pickupAddress ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerId)}',
+            ),
+            icon: icon,
+          ),
+        );
+        addedPassengerIds.add(passengerId);
+      }
+    }
+
+    // Fallback: markers from passengers list when coordinates exist on passenger
+    if (trip.passengers != null) {
+      for (final passenger in trip.passengers!) {
+        final passengerId =
+            passenger.carpoolTripId ?? passenger.id?.toString() ?? '';
+        if (passengerId.isEmpty || addedPassengerIds.contains(passengerId)) {
+          continue;
+        }
+
+        final coords =
+            passenger.closestPickupPoint ?? passenger.pickupCoordinates;
+        if (coords == null || coords.length < 2) continue;
+
+        final icon = await _passengerMarkerIcon(passenger);
+        _markers.add(
+          Marker(
+            markerId: MarkerId('passenger_pickup_$passengerId'),
+            position: LatLng(coords[0], coords[1]),
+            anchor: const Offset(0.5, 0.5),
+            infoWindow: InfoWindow(
+              title: 'Pickup - ${passenger.name ?? 'Unknown'}',
+              snippet: passenger.displayPickupAddress(trip.startAddress),
+            ),
+            icon: icon,
+          ),
+        );
+        addedPassengerIds.add(passengerId);
       }
     }
 
     print('=== Total markers created: ${_markers.length} ===');
-
     update();
   }
 
@@ -452,10 +470,6 @@ class SimpleTripMapController extends GetxController {
     update();
   }
 
-  void _updateDriverToStartPolyline() {
-    // Removed driver to start polyline as requested
-    update();
-  }
 
   String _getPassengerStatus(String passengerId) {
     if (trip.passengers != null) {
