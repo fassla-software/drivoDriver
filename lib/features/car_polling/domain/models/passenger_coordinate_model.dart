@@ -73,7 +73,8 @@ class PassengerCoordinateModel {
       final coords = closestCoordinates ?? pickupCoordinates;
       return coords != null && coords.length >= 2;
     } else if (type == 'dropoff') {
-      return dropoffCoordinates != null && dropoffCoordinates!.length >= 2;
+      final dropCoords = dropoffCoordinates;
+      return dropCoords != null && dropCoords.length >= 2;
     }
     return false;
   }

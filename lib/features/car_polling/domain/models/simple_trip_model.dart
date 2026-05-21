@@ -243,19 +243,21 @@ class SimpleTripModel {
     };
   }
 
-  // Helper methods
   String get tripStatus {
     if (isCancelled == true) {
       return 'cancelled';
-    } else if (startTime != null &&
-        (endTime == null || endTime!.isEmpty) &&
+    }
+    final sTime = startTime;
+    final eTime = endTime;
+    if (sTime != null &&
+        (eTime == null || eTime.isEmpty) &&
         (isTripStarted == 0 || isTripStarted == null)) {
       return 'pending';
-    } else if (startTime != null &&
-        (endTime == null || endTime!.isEmpty) &&
+    } else if (sTime != null &&
+        (eTime == null || eTime.isEmpty) &&
         isTripStarted == 1) {
       return 'ongoing';
-    } else if (startTime != null && endTime != null && endTime!.isNotEmpty) {
+    } else if (sTime != null && eTime != null && eTime.isNotEmpty) {
       return 'completed';
     }
     return 'unknown';
@@ -264,15 +266,17 @@ class SimpleTripModel {
   bool get hasPassengers => (passengersCount ?? 0) > 0;
 
   String get formattedStartTime {
-    if (startTime != null && startTime!.isNotEmpty) {
-      return startTime!;
+    final sTime = startTime;
+    if (sTime != null && sTime.isNotEmpty) {
+      return sTime;
     }
     return 'N/A';
   }
 
   String get formattedStartDate {
-    if (startDay != null && startDay!.isNotEmpty) {
-      return startDay!;
+    final sDay = startDay;
+    if (sDay != null && sDay.isNotEmpty) {
+      return sDay;
     }
     return 'N/A';
   }

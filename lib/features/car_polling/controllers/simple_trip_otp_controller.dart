@@ -24,6 +24,7 @@ class SimpleTripOtpController extends GetxController {
 
   void clearVerificationCode() {
     _verificationCode = '';
+    _isPinVerificationLoading = false;
     update();
   }
 

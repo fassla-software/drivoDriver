@@ -45,6 +45,7 @@ class ProfileEditScreenState extends State<ProfileEditScreen>  with TickerProvid
 
   bool isRideShare = true;
   bool isParcelDelivery = true;
+  String? selectedGender;
 
   @override
   void initState() {
@@ -62,6 +63,9 @@ class ProfileEditScreenState extends State<ProfileEditScreen>  with TickerProvid
       }
     }
     Get.find<AuthController>().setIdentityType(widget.profileInfo.identificationType!);
+    selectedGender = (widget.profileInfo.gender?.isNotEmpty == true)
+        ? widget.profileInfo.gender
+        : null;
     if(Get.find<LocalizationController>().isLtr){
       phoneController.text = widget.profileInfo.phone!;
     }else{
@@ -250,6 +254,36 @@ class ProfileEditScreenState extends State<ProfileEditScreen>  with TickerProvid
                   controller: emailController,
                   focusNode: emailFocus,
                   inputAction: TextInputAction.done,
+                ),
+
+                TextFieldTitleWidget(title: 'gender'.tr),
+
+                Container(height: 50,
+                  padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeDefault),
+                  decoration: BoxDecoration(color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(width: .5, color: Theme.of(context).hintColor.withOpacity(.7))),
+                  child: DropdownButton<String>(
+                    hint: Text('select_gender'.tr, style: textRegular.copyWith(color: Theme.of(context).hintColor)),
+                    value: selectedGender,
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: 'male',
+                        child: Text('male'.tr, style: textRegular.copyWith(color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: 'female',
+                        child: Text('female'.tr, style: textRegular.copyWith(color: Theme.of(context).textTheme.bodyMedium!.color)),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        selectedGender = val;
+                      });
+                    },
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                  ),
                 ),
 
                 TextFieldTitleWidget(title: 'identity_type'.tr),
@@ -490,7 +524,8 @@ class ProfileEditScreenState extends State<ProfileEditScreen>  with TickerProvid
                     profileController.updateProfile(
                         fName, lName, email,
                         identityNumberController.text,
-                        services
+                        services,
+                        selectedGender,
                     );
                   }
                 },

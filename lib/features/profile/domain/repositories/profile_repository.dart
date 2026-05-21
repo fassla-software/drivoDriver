@@ -67,7 +67,7 @@ class ProfileRepository implements ProfileRepositoryInterface{
       String firstName, String lastname,String email,
       String identityType, String identityNumber,
       XFile? profile, List<MultipartBody>? identityImage,
-      List<String> services
+      List<String> services, String? gender
       ) async {
     Map<String, String> fields = {};
 
@@ -80,6 +80,9 @@ class ProfileRepository implements ProfileRepositoryInterface{
       'email':email,
       'service': jsonEncode(services)
     });
+    if (gender != null) {
+      fields['gender'] = gender;
+    }
     return await apiClient.postMultipartData(AppConstants.updateProfileInfo, fields, identityImage!, MultipartBody('profile_image', profile), []);
   }
 

@@ -70,7 +70,7 @@ class SimpleTripOtpWidget extends StatelessWidget {
                         keyboardType: TextInputType.number,
                         animationType: AnimationType.fade,
                         pinTheme: PinTheme(
-                          shape: PinCodeFieldShape.box,
+                           shape: PinCodeFieldShape.box,
                           fieldHeight: 40,
                           fieldWidth: 40,
                           borderWidth: 1,

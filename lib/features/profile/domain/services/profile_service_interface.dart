@@ -16,7 +16,7 @@ abstract class ProfileServiceInterface {
       String firstName, String lastname,String email,
       String identityType, String identityNumber,
       XFile? profile,List<MultipartBody>? identityImage,
-      List<String> services
+      List<String> services, String? gender
       );
   Future<dynamic> getProfileLevelInfo();
 }

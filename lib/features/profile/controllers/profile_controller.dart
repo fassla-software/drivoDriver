@@ -128,7 +128,7 @@ class ProfileController extends GetxController implements GetxService {
   }
 
   Future<Response> updateProfile(String firstName, String lastName,
-      String email, String identityNumber, List<String> services) async {
+      String email, String identityNumber, List<String> services, String? gender) async {
     isLoading = true;
     update();
     Response? response = await profileServiceInterface.updateProfileInfo(
@@ -140,6 +140,7 @@ class ProfileController extends GetxController implements GetxService {
       Get.find<AuthController>().pickedProfileFile,
       Get.find<AuthController>().multipartList,
       services,
+      gender,
     );
     if (response!.statusCode == 200) {
       Get.back();

@@ -59,9 +59,15 @@ class TripDetailsScreen extends StatelessWidget {
               const SizedBox(height: Dimensions.paddingSizeDefault),
               _buildTripInfo(context, controller, currentTrip),
               const SizedBox(height: Dimensions.paddingSizeDefault),
-              if (currentTrip.passengers != null &&
-                  currentTrip.passengers!.isNotEmpty)
-                _buildPassengersList(context, currentTrip),
+              Builder(
+                builder: (context) {
+                  final passengers = currentTrip.passengers;
+                  if (passengers != null && passengers.isNotEmpty) {
+                    return _buildPassengersList(context, currentTrip);
+                  }
+                  return const SizedBox();
+                },
+              ),
               const SizedBox(height: Dimensions.paddingSizeLarge),
               _buildActionButtons(context, controller, currentTrip),
             ],
@@ -275,10 +281,18 @@ class TripDetailsScreen extends StatelessWidget {
               trip.tripType == 'repeated' ? 'Repeated Trip' : 'One Time Trip',
             ),
           ],
-          if (trip.vehicleName != null) ...[
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.directions_car_rounded, trip.vehicleName!),
-          ],
+          Builder(
+            builder: (context) {
+              final vehicleName = trip.vehicleName;
+              if (vehicleName != null) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _buildInfoRow(Icons.directions_car_rounded, vehicleName),
+                );
+              }
+              return const SizedBox();
+            },
+          ),
           if (trip.features.isNotEmpty) ...[
             const SizedBox(height: 12),
             Align(
@@ -372,9 +386,13 @@ class TripDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildRecurringDates(BuildContext context, SimpleTripModel trip) {
-    final validDates = trip.tripDates!
-        .where((d) => d.isCancelled != true && d.date != null)
-        .map((d) => d.date!)
+    final tripDates = trip.tripDates;
+    if (tripDates == null) return const SizedBox();
+
+    final validDates = tripDates
+        .where((d) => d.isCancelled != true)
+        .map((d) => d.date)
+        .whereType<String>()
         .toList();
 
     return Column(
@@ -552,7 +570,9 @@ class TripDetailsScreen extends StatelessWidget {
                   ),
                   onTap: () {
                     Get.back();
-                    _openMap(pickupCoords![0], pickupCoords[1]);
+                    if (pickupCoords != null && pickupCoords.length >= 2) {
+                      _openMap(pickupCoords[0], pickupCoords[1]);
+                    }
                   },
                 ),
                 const Divider(),
@@ -572,7 +592,9 @@ class TripDetailsScreen extends StatelessWidget {
                   ),
                   onTap: () {
                     Get.back();
-                    _openMap(dropoffCoords![0], dropoffCoords[1]);
+                    if (dropoffCoords != null && dropoffCoords.length >= 2) {
+                      _openMap(dropoffCoords[0], dropoffCoords[1]);
+                    }
                   },
                 ),
                 const SizedBox(height: Dimensions.paddingSizeLarge),
@@ -587,7 +609,7 @@ class TripDetailsScreen extends StatelessWidget {
   Widget _buildPassengerRow(BuildContext context,
       SimplePassengerModel passenger, SimpleTripModel trip) {
     final imageUrl = passenger.fullProfileImage;
-
+    print('image url: $imageUrl');
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -702,6 +724,7 @@ class TripDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildPassengersList(BuildContext context, SimpleTripModel trip) {
+    final passengers = trip.passengers;
     return Container(
         padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
         decoration: BoxDecoration(
@@ -718,20 +741,21 @@ class TripDetailsScreen extends StatelessWidget {
               style: textBold.copyWith(fontSize: 16, color: _inkBlack),
             ),
             const SizedBox(height: 12),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: trip.passengers?.length ?? 0,
-              separatorBuilder: (_, __) => Divider(
-                height: 18,
-                thickness: 0.5,
-                color: _lightBlue,
+            if (passengers != null)
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: passengers.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 18,
+                  thickness: 0.5,
+                  color: _lightBlue,
+                ),
+                itemBuilder: (context, index) {
+                  final passenger = passengers[index];
+                  return _buildPassengerRow(context, passenger, trip);
+                },
               ),
-              itemBuilder: (context, index) {
-                final passenger = trip.passengers![index];
-                return _buildPassengerRow(context, passenger, trip);
-              },
-            ),
           ],
         ));
   }
@@ -873,9 +897,10 @@ class TripDetailsScreen extends StatelessWidget {
 
   void _showCancelOptions(BuildContext context,
       SimpleTripsController controller, SimpleTripModel trip) {
+    final tripDates = trip.tripDates;
     if (trip.tripType == 'repeated' &&
-        trip.tripDates != null &&
-        trip.tripDates!.isNotEmpty) {
+        tripDates != null &&
+        tripDates.isNotEmpty) {
       showModalBottomSheet(
         context: context,
         builder: (context) {
@@ -920,9 +945,9 @@ class TripDetailsScreen extends StatelessWidget {
   void _showDateSelectionDialog(BuildContext context,
       SimpleTripsController controller, SimpleTripModel trip) {
     final List<String> availableDates = trip.tripDates
-            ?.where((dateModel) =>
-                dateModel.isCancelled != true && dateModel.date != null)
-            .map((dateModel) => dateModel.date!)
+            ?.where((dateModel) => dateModel.isCancelled != true)
+            .map((dateModel) => dateModel.date)
+            .whereType<String>()
             .toList() ??
         [];
     final List<String> selectedDates = [];

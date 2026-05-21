@@ -55,13 +55,15 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
   }
 
   void _saveDateTimeToController(RegisterRouteController controller) {
-    if (_departureDate == null || _departureTime == null) return;
+    final departureDate = _departureDate;
+    final departureTime = _departureTime;
+    if (departureDate == null || departureTime == null) return;
     final dt = DateTime(
-      _departureDate!.year,
-      _departureDate!.month,
-      _departureDate!.day,
-      _departureTime!.hour,
-      _departureTime!.minute,
+      departureDate.year,
+      departureDate.month,
+      departureDate.day,
+      departureTime.hour,
+      departureTime.minute,
     );
     controller.startTimeController.text =
         DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
@@ -143,25 +145,37 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: _buildDateTimeTile(
-                                    label: 'date'.tr,
-                                    value: _departureDate == null
-                                        ? null
-                                        : DateFormat('dd/MM/yyyy')
-                                            .format(_departureDate!),
-                                    icon: Icons.calendar_today_outlined,
-                                    onTap: () => _pickDate(controller),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final departureDate = _departureDate;
+                                      return _buildDateTimeTile(
+                                        label: 'date'.tr,
+                                        value: departureDate == null
+                                            ? null
+                                            : DateFormat('dd/MM/yyyy')
+                                                .format(departureDate),
+                                        icon: Icons.calendar_today_outlined,
+                                        onTap: () => _pickDate(controller),
+                                      );
+                                    },
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _buildDateTimeTile(
-                                    label: 'time'.tr,
-                                    value: _departureTime?.format(context),
-                                    icon: Icons.access_time_rounded,
-                                    onTap: () => _pickTime(controller),
+                                if (rideType != 'routine') ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Builder(
+                                      builder: (context) {
+                                        final departureTime = _departureTime;
+                                        return _buildDateTimeTile(
+                                          label: 'time'.tr,
+                                          value: departureTime?.format(context),
+                                          icon: Icons.access_time_rounded,
+                                          onTap: () => _pickTime(controller),
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
+                                ]
                               ],
                             ),
                             if (rideType == 'routine') ...[

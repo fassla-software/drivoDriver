@@ -47,10 +47,9 @@ class CarpoolMainMapController extends GetxController {
   GoogleMapController? get mapController => _mapController;
 
   LatLng get initialPosition {
-    if (carpoolTrip.startCoordinates != null &&
-        carpoolTrip.startCoordinates!.length >= 2) {
-      return LatLng(
-          carpoolTrip.startCoordinates![1], carpoolTrip.startCoordinates![0]);
+    final startCoords = carpoolTrip.startCoordinates;
+    if (startCoords != null && startCoords.length >= 2) {
+      return LatLng(startCoords[1], startCoords[0]);
     }
     return const LatLng(30.0444, 31.2357); // Cairo default
   }
@@ -65,9 +64,9 @@ class CarpoolMainMapController extends GetxController {
   }
 
   String get polylineSource {
-    if (carpoolTrip.encodedPolyline != null &&
-        carpoolTrip.encodedPolyline!.isNotEmpty) {
-      return 'Trip Polyline (${carpoolTrip.encodedPolyline!.length} chars)';
+    final polyline = carpoolTrip.encodedPolyline;
+    if (polyline != null && polyline.isNotEmpty) {
+      return 'Trip Polyline (${polyline.length} chars)';
     }
     return 'No polyline available';
   }
@@ -129,9 +128,11 @@ class CarpoolMainMapController extends GetxController {
     ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(),
         targetWidth: width);
     ui.FrameInfo fi = await codec.getNextFrame();
-    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
-        .buffer
-        .asUint8List();
+    final byteData = await fi.image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      return Uint8List(0);
+    }
+    return byteData.buffer.asUint8List();
   }
 
   // Disabled: Not needed anymore since we removed the orange line from current to start
@@ -265,9 +266,10 @@ class CarpoolMainMapController extends GetxController {
         return;
       }
 
-      _currentPosition = await Geolocator.getCurrentPosition();
+      final pos = await Geolocator.getCurrentPosition();
+      _currentPosition = pos;
       print(
-          '=== Current position: ${_currentPosition!.latitude}, ${_currentPosition!.longitude} ===');
+          '=== Current position: ${pos.latitude}, ${pos.longitude} ===');
     } catch (e) {
       print('=== Error getting current location: $e ===');
     }
@@ -289,13 +291,14 @@ class CarpoolMainMapController extends GetxController {
     }
 
     // Add car marker at current position if available
-    if (_currentPosition != null) {
+    final currentPos = _currentPosition;
+    if (currentPos != null) {
       _markers.add(
         Marker(
           markerId: const MarkerId("car"),
           position:
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          rotation: _currentPosition!.heading,
+              LatLng(currentPos.latitude, currentPos.longitude),
+          rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,
           flat: true,
@@ -305,13 +308,12 @@ class CarpoolMainMapController extends GetxController {
       );
     } else {
       // Add a placeholder car marker at start position if no current position
-      if (carpoolTrip.startCoordinates != null &&
-          carpoolTrip.startCoordinates!.length >= 2) {
+      final startCoords = carpoolTrip.startCoordinates;
+      if (startCoords != null && startCoords.length >= 2) {
         _markers.add(
           Marker(
             markerId: const MarkerId("car"),
-            position: LatLng(carpoolTrip.startCoordinates![1],
-                carpoolTrip.startCoordinates![0]),
+            position: LatLng(startCoords[1], startCoords[0]),
             rotation: 0,
             draggable: false,
             zIndex: 2,
@@ -324,13 +326,12 @@ class CarpoolMainMapController extends GetxController {
     }
 
     // Start marker
-    if (carpoolTrip.startCoordinates != null &&
-        carpoolTrip.startCoordinates!.length >= 2) {
+    final startCoords = carpoolTrip.startCoordinates;
+    if (startCoords != null && startCoords.length >= 2) {
       _markers.add(
         Marker(
           markerId: const MarkerId('start'),
-          position: LatLng(carpoolTrip.startCoordinates![0],
-              carpoolTrip.startCoordinates![1]),
+          position: LatLng(startCoords[0], startCoords[1]),
           infoWindow: InfoWindow(
             title: 'Start',
             snippet: carpoolTrip.startAddress ?? 'Trip start location',
@@ -342,13 +343,13 @@ class CarpoolMainMapController extends GetxController {
     }
 
     // End marker
-    if (carpoolTrip.endCoordinates != null &&
-        carpoolTrip.endCoordinates!.length >= 2) {
+    final endCoords = carpoolTrip.endCoordinates;
+    if (endCoords != null && endCoords.length >= 2) {
       _markers.add(
         Marker(
           markerId: const MarkerId('end'),
           position: LatLng(
-              carpoolTrip.endCoordinates![0], carpoolTrip.endCoordinates![1]),
+              endCoords[0], endCoords[1]),
           infoWindow: InfoWindow(
             title: 'End',
             snippet: carpoolTrip.endAddress ?? 'Trip end location',
@@ -365,8 +366,9 @@ class CarpoolMainMapController extends GetxController {
   }
 
   SimplePassengerModel? _findPassenger(String? passengerId) {
-    if (passengerId == null || carpoolTrip.passengers == null) return null;
-    for (final passenger in carpoolTrip.passengers!) {
+    final passengers = carpoolTrip.passengers;
+    if (passengerId == null || passengers == null) return null;
+    for (final passenger in passengers) {
       if (passenger.carpoolTripId == passengerId ||
           passenger.id?.toString() == passengerId) {
         return passenger;
@@ -379,9 +381,10 @@ class CarpoolMainMapController extends GetxController {
     print('=== Creating passenger pickup markers with avatars ===');
     final addedPassengerIds = <String>{};
 
-    if (carpoolTrip.passengerCoordinates != null) {
-      for (int i = 0; i < carpoolTrip.passengerCoordinates!.length; i++) {
-        final passengerCoord = carpoolTrip.passengerCoordinates![i];
+    final passengerCoords = carpoolTrip.passengerCoordinates;
+    if (passengerCoords != null) {
+      for (int i = 0; i < passengerCoords.length; i++) {
+        final passengerCoord = passengerCoords[i];
         if (!passengerCoord.isPickup || !passengerCoord.hasValidCoordinates) {
           continue;
         }
@@ -417,8 +420,9 @@ class CarpoolMainMapController extends GetxController {
       }
     }
 
-    if (carpoolTrip.passengers != null) {
-      for (final passenger in carpoolTrip.passengers!) {
+    final passengers = carpoolTrip.passengers;
+    if (passengers != null) {
+      for (final passenger in passengers) {
         final passengerId =
             passenger.carpoolTripId ?? passenger.id?.toString() ?? '';
         if (passengerId.isEmpty || addedPassengerIds.contains(passengerId)) {
@@ -541,15 +545,15 @@ class CarpoolMainMapController extends GetxController {
   Future<void> _loadMainRoute() async {
     try {
       print('=== Loading main route ===');
-      print('=== Encoded polyline: ${carpoolTrip.encodedPolyline} ===');
+      final polyline = carpoolTrip.encodedPolyline;
+      print('=== Encoded polyline: $polyline ===');
 
       // Use encoded polyline from the server (static route for carpool trips)
-      if (carpoolTrip.encodedPolyline != null &&
-          carpoolTrip.encodedPolyline!.isNotEmpty) {
+      if (polyline != null && polyline.isNotEmpty) {
         print('=== Using encoded polyline from server ===');
         print(
-            '=== Encoded polyline length: ${carpoolTrip.encodedPolyline!.length} characters ===');
-        _mainRoutePoints = decodePolyline(carpoolTrip.encodedPolyline!);
+            '=== Encoded polyline length: ${polyline.length} characters ===');
+        _mainRoutePoints = decodePolyline(polyline);
         _polylineCoordinateList =
             List.from(_mainRoutePoints); // Copy for car tracking
         _updateMainRoutePolyline();
@@ -690,22 +694,27 @@ class CarpoolMainMapController extends GetxController {
   }
 
   void returnToDriver() {
-    if (_currentPosition != null && _mapController != null) {
+    final currentPos = _currentPosition;
+    if (currentPos != null && _mapController != null) {
       _mapController!.animateCamera(
         CameraUpdate.newLatLng(
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          LatLng(currentPos.latitude, currentPos.longitude),
         ),
       );
     }
   }
 
   void openInGoogleMaps() async {
-    if (carpoolTrip.startCoordinates != null &&
-        carpoolTrip.endCoordinates != null) {
-      final startLat = carpoolTrip.startCoordinates![0];
-      final startLng = carpoolTrip.startCoordinates![1];
-      final endLat = carpoolTrip.endCoordinates![0];
-      final endLng = carpoolTrip.endCoordinates![1];
+    final startCoords = carpoolTrip.startCoordinates;
+    final endCoords = carpoolTrip.endCoordinates;
+    if (startCoords != null &&
+        endCoords != null &&
+        startCoords.length >= 2 &&
+        endCoords.length >= 2) {
+      final startLat = startCoords[0];
+      final startLng = startCoords[1];
+      final endLat = endCoords[0];
+      final endLng = endCoords[1];
 
       final url =
           'https://www.google.com/maps/dir/?api=1&origin=$startLat,$startLng&destination=$endLat,$endLng&travelmode=driving';
@@ -717,18 +726,20 @@ class CarpoolMainMapController extends GetxController {
   }
 
   Future<void> myCurrentLocation() async {
-    if (_currentPosition != null && _mapController != null) {
+    final currentPos = _currentPosition;
+    if (currentPos != null && _mapController != null) {
       _mapController!.animateCamera(
         CameraUpdate.newLatLng(
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          LatLng(currentPos.latitude, currentPos.longitude),
         ),
       );
     }
   }
 
   String _getPassengerStatus(String passengerId) {
-    if (carpoolTrip.passengers != null) {
-      for (final passenger in carpoolTrip.passengers!) {
+    final passengers = carpoolTrip.passengers;
+    if (passengers != null) {
+      for (final passenger in passengers) {
         if (passenger.carpoolTripId == passengerId) {
           return passenger.status ?? 'Unknown';
         }
@@ -806,7 +817,8 @@ class CarpoolMainMapController extends GetxController {
 
   // Start location tracking like in original map screen
   void startLocationTracking() {
-    if (_currentPosition != null) {
+    final currentPos = _currentPosition;
+    if (currentPos != null) {
       // Update car marker position
       _markers
           .removeWhere((marker) => marker.markerId == const MarkerId("car"));
@@ -814,8 +826,8 @@ class CarpoolMainMapController extends GetxController {
         Marker(
           markerId: const MarkerId("car"),
           position:
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          rotation: _currentPosition!.heading,
+              LatLng(currentPos.latitude, currentPos.longitude),
+          rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,
           flat: true,
@@ -865,7 +877,8 @@ class CarpoolMainMapController extends GetxController {
 
   // Set markers initial position like in original map screen
   void setMarkersInitialPosition() {
-    if (_currentPosition != null) {
+    final currentPos = _currentPosition;
+    if (currentPos != null) {
       // Update car marker position
       _markers
           .removeWhere((marker) => marker.markerId == const MarkerId("car"));
@@ -873,8 +886,8 @@ class CarpoolMainMapController extends GetxController {
         Marker(
           markerId: const MarkerId("car"),
           position:
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          rotation: _currentPosition!.heading,
+              LatLng(currentPos.latitude, currentPos.longitude),
+          rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,
           flat: true,

@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
+import 'package:ride_sharing_user_app/features/car_polling/controllers/simple_trip_otp_controller.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../common_widgets/app_bar_widget.dart';
 import '../../../util/dimensions.dart';
@@ -15,6 +18,7 @@ import '../domain/models/simple_passenger_model.dart';
 import '../controllers/simple_trip_map_controller.dart';
 import '../widgets/passenger_route_info_widget.dart';
 import '../widgets/simple_trip_otp_widget.dart';
+import '../widgets/improved_trip_otp_widget.dart';
 
 class SimpleTripMapScreen extends StatefulWidget {
   final SimpleTripModel trip;
@@ -49,6 +53,11 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
     print('=== Trip passengers: ${widget.trip.passengers?.length ?? 0} ===');
 
     controller = Get.put(SimpleTripMapController(trip: widget.trip));
+
+    // Ensure SimpleTripOtpController is registered before GetBuilder needs it
+    if (!Get.isRegistered<SimpleTripOtpController>()) {
+      Get.find<SimpleTripOtpController>();
+    }
 
     // Initialize UI animations
     _uiAnimationController = AnimationController(
@@ -97,6 +106,13 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
           if (ctrl.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          final trip = widget.trip;
+          final passengers = trip.passengers;
+          final passengerCoordinates = trip.passengerCoordinates;
+          final encodedPolyline = trip.encodedPolyline;
+          final hasPolyline =
+              encodedPolyline != null && encodedPolyline.isNotEmpty;
 
           return Stack(
             children: [
@@ -259,7 +275,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '#${widget.trip.id}',
+                                      '#${trip.id ?? 'N/A'}',
                                       style: textMedium.copyWith(
                                         color: Theme.of(context).primaryColor,
                                         fontSize: Dimensions.fontSizeSmall,
@@ -276,10 +292,10 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      widget.trip.isTripStarted == 1
+                                      trip.isTripStarted == 1
                                           ? Colors.green.withOpacity(0.9)
                                           : Colors.orange.withOpacity(0.9),
-                                      widget.trip.isTripStarted == 1
+                                      trip.isTripStarted == 1
                                           ? Colors.green.shade600
                                               .withOpacity(0.9)
                                           : Colors.orange.shade600
@@ -301,7 +317,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      widget.trip.isTripStarted == 1
+                                      trip.isTripStarted == 1
                                           ? 'active'.tr
                                           : 'pending'.tr,
                                       style: textBold.copyWith(
@@ -442,7 +458,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                         ),
                                       ),
                                       Text(
-                                        widget.trip.formattedPrice,
+                                        trip.formattedPrice,
                                         style: textBold.copyWith(
                                           color: Colors.white,
                                           fontSize: Dimensions.fontSizeDefault,
@@ -455,8 +471,8 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                             ],
                           ),
                           // Route Statistics
-                          if (widget.trip.passengerCoordinates != null &&
-                              widget.trip.passengerCoordinates!.isNotEmpty) ...[
+                          if (passengerCoordinates != null &&
+                              passengerCoordinates.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -492,31 +508,19 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       Icon(
-                                        widget.trip.encodedPolyline != null &&
-                                                widget.trip.encodedPolyline!
-                                                    .isNotEmpty
+                                        hasPolyline
                                             ? Icons.check_circle
                                             : Icons.error_outline,
-                                        color: widget.trip.encodedPolyline !=
-                                                    null &&
-                                                widget.trip.encodedPolyline!
-                                                    .isNotEmpty
+                                        color: hasPolyline
                                             ? Colors.green
                                             : Colors.red,
                                         size: 16,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        widget.trip.encodedPolyline != null &&
-                                                widget.trip.encodedPolyline!
-                                                    .isNotEmpty
-                                            ? 'server'.tr
-                                            : 'none'.tr,
+                                        hasPolyline ? 'server'.tr : 'none'.tr,
                                         style: textMedium.copyWith(
-                                          color: widget.trip.encodedPolyline !=
-                                                      null &&
-                                                  widget.trip.encodedPolyline!
-                                                      .isNotEmpty
+                                          color: hasPolyline
                                               ? Colors.green
                                               : Colors.red,
                                           fontSize: Dimensions.fontSizeSmall,
@@ -530,7 +534,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${widget.trip.passengers?.length ?? 0} ${'passengers'.tr}',
+                                        '${passengers?.length ?? 0} ${'passengers'.tr}',
                                         style: textMedium.copyWith(
                                           color: Theme.of(context).primaryColor,
                                           fontSize: Dimensions.fontSizeSmall,
@@ -570,8 +574,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
               ),
 
               // Passengers Panel
-              if (widget.trip.passengers != null &&
-                  widget.trip.passengers!.isNotEmpty)
+              if (passengers != null && passengers.isNotEmpty)
                 Positioned(
                   top: _passengersPanelPosition.dy,
                   left: _passengersPanelPosition.dx,
@@ -712,7 +715,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    '${widget.trip.passengers!.length}',
+                                    '${passengers.length}',
                                     style: textMedium.copyWith(
                                       color: Colors.white,
                                       fontSize: Dimensions.fontSizeExtraSmall,
@@ -728,10 +731,9 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                               shrinkWrap: true,
                               padding: const EdgeInsets.all(
                                   Dimensions.paddingSizeDefault),
-                              itemCount: widget.trip.passengers!.length,
+                              itemCount: passengers.length,
                               itemBuilder: (context, index) {
-                                final passenger =
-                                    widget.trip.passengers![index];
+                                final passenger = passengers[index];
                                 return _buildPassengerCard(passenger);
                               },
                             ),
@@ -781,173 +783,207 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
   }
 
   Widget _buildPassengerCard(SimplePassengerModel passenger) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
-    padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
-    decoration: BoxDecoration(
-      color: Theme.of(context).cardColor,
-      borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
-      border: Border.all(color: Theme.of(context).dividerColor),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-
-            /// Avatar FIXED
-            CircleAvatar(
-              radius: 20,
-              backgroundColor:
-                  Theme.of(context).primaryColor.withOpacity(0.1),
-
-              child: ClipOval(
-                child: _passengerAvatar(passenger),
-              ),
-            ),
-
-            const SizedBox(width: Dimensions.paddingSizeSmall),
-
-            /// Info + locations (always visible beside passenger)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    passenger.name ?? 'unknown_passenger'.tr,
-                    style: textMedium.copyWith(
-                      fontSize: Dimensions.fontSizeDefault,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.event_seat,
-                        color: Theme.of(context).primaryColor,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${passenger.seatsCount ?? 1} ${'seats'.tr}',
-                        style: textRegular.copyWith(
-                          fontSize: Dimensions.fontSizeSmall,
-                          color: Theme.of(context).hintColor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.payments_outlined,
-                        size: 14,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        passenger.formattedFare,
-                        style: textBold.copyWith(
-                          fontSize: Dimensions.fontSizeSmall,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  PassengerRouteInfoWidget(
-                    passenger: passenger,
-                    tripStartAddress: widget.trip.startAddress,
-                    tripEndAddress: widget.trip.endAddress,
-                    compact: true,
-                  ),
-                ],
-              ),
-            ),
-
-            /// OTP Button
-            ElevatedButton.icon(
-              onPressed: () => _showOtpVerificationDialog(passenger),
-              icon: const Icon(Icons.verified_user, size: 16),
-              label: Text(
-                'OTP',
-                style: textMedium.copyWith(
-                  fontSize: Dimensions.fontSizeSmall,
+    return Container(
+      margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+      padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              /// Avatar FIXED
+              CircleAvatar(
+                radius: 20,
+                backgroundColor:
+                    Theme.of(context).primaryColor.withOpacity(0.1),
+                child: ClipOval(
+                  child: _passengerAvatar(passenger),
                 ),
               ),
-            ),
-          ],
-        ),
 
-        const SizedBox(height: Dimensions.paddingSizeSmall),
+              const SizedBox(width: Dimensions.paddingSizeSmall),
 
-        /// Status
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: passenger.statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: passenger.statusColor),
+              /// Info + locations (always visible beside passenger)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      passenger.name ?? 'unknown_passenger'.tr,
+                      style: textMedium.copyWith(
+                        fontSize: Dimensions.fontSizeDefault,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_seat,
+                          color: Theme.of(context).primaryColor,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${passenger.seatsCount ?? 1} ${'seats'.tr}',
+                          style: textRegular.copyWith(
+                            fontSize: Dimensions.fontSizeSmall,
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.payments_outlined,
+                          size: 14,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          passenger.formattedFare,
+                          style: textBold.copyWith(
+                            fontSize: Dimensions.fontSizeSmall,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () => _showRouteOptionsBottomSheet(
+                          context, passenger, widget.trip),
+                      borderRadius: BorderRadius.circular(10),
+                      child: PassengerRouteInfoWidget(
+                        passenger: passenger,
+                        tripStartAddress: widget.trip.startAddress,
+                        tripEndAddress: widget.trip.endAddress,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              /// OTP Button
+              GetBuilder<SimpleTripOtpController>(
+                  builder: (controller) {
+                    return ElevatedButton.icon(
+                      onPressed: () =>
+                          _showOtpVerificationDialog(passenger, controller),
+                      icon: const Icon(Icons.verified_user, size: 16),
+                      label: Text(
+                        'OTP',
+                        style: textMedium.copyWith(
+                          fontSize: Dimensions.fontSizeSmall,
+                        ),
+                      ),
+                    );
+                  }),
+            ],
           ),
-          child: Text(
-            passenger.statusDisplayText,
-            style: textRegular.copyWith(
-              fontSize: Dimensions.fontSizeExtraSmall,
-              color: passenger.statusColor,
+
+          const SizedBox(height: Dimensions.paddingSizeSmall),
+
+          /// Status
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: passenger.statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: passenger.statusColor),
+            ),
+            child: Text(
+              passenger.statusDisplayText,
+              style: textRegular.copyWith(
+                fontSize: Dimensions.fontSizeExtraSmall,
+                color: passenger.statusColor,
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-  void _showOtpVerificationDialog(SimplePassengerModel passenger) {
+  void _openMap(double lat, double lng) async {
+    final googleMapsAndroidUrl = "google.navigation:q=$lat,$lng";
+    final googleMapsIOSUrl =
+        "comgooglemaps://?daddr=$lat,$lng&directionsmode=driving";
+    final googleMapsWebUrl =
+        "https://www.google.com/maps/search/?api=1&query=$lat,$lng";
+    final appleMapsUrl = "http://maps.apple.com/?daddr=$lat,$lng";
+
+    try {
+      if (Platform.isIOS) {
+        if (await canLaunchUrl(Uri.parse(googleMapsIOSUrl))) {
+          await launchUrl(Uri.parse(googleMapsIOSUrl));
+        } else if (await canLaunchUrl(Uri.parse(googleMapsWebUrl))) {
+          await launchUrl(
+            Uri.parse(googleMapsWebUrl),
+            mode: LaunchMode.externalApplication,
+          );
+        } else {
+          await launchUrl(Uri.parse(appleMapsUrl));
+        }
+      } else {
+        if (await canLaunchUrl(Uri.parse(googleMapsAndroidUrl))) {
+          await launchUrl(Uri.parse(googleMapsAndroidUrl));
+        } else {
+          await launchUrl(
+            Uri.parse(googleMapsWebUrl),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      }
+    } catch (e) {
+      try {
+        if (Platform.isIOS) {
+          await launchUrl(Uri.parse(appleMapsUrl));
+        } else {
+          await launchUrl(
+            Uri.parse(googleMapsWebUrl),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      } catch (_) {
+        Get.snackbar(
+          'location_error'.tr,
+          'cannot_open_maps'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    }
+  }
+
+  void _showOtpVerificationDialog(
+      SimplePassengerModel passenger, SimpleTripOtpController controller) {
     // تأكد من وجود carpool_trip_id
-    if (passenger.carpoolTripId == null || passenger.carpoolTripId!.isEmpty) {
+    final carpoolTripId = passenger.carpoolTripId;
+    if (carpoolTripId == null || carpoolTripId.isEmpty) {
       _showSnackBar('Invalid passenger data', Colors.red, icon: Icons.error);
       return;
     }
-
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return Dialog(
-          child: Container(
-            padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Verify Passenger',
-                  style: textBold.copyWith(
-                    fontSize: Dimensions.fontSizeLarge,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-                const SizedBox(height: Dimensions.paddingSizeSmall),
-                Text(
-                  passenger.name ?? 'Unknown Passenger',
-                  style:
-                      textMedium.copyWith(fontSize: Dimensions.fontSizeDefault),
-                ),
-                const SizedBox(height: Dimensions.paddingSizeLarge),
-                SimpleTripOtpWidget(
-                  carpoolTripId: passenger.carpoolTripId!,
-                  passengerName: passenger.name ?? 'Unknown Passenger',
-                  onShowSnackBar: _showSnackBar,
-                  onCloseDialog: () => Navigator.of(dialogContext).pop(),
-                ),
-                const SizedBox(height: Dimensions.paddingSizeDefault),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: Text('Cancel'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Dimensions.radiusLarge),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+            child: ImprovedTripOtpWidget(
+              carpoolTripId: carpoolTripId,
+              passengerName: passenger.name ?? 'Unknown Passenger',
+              onShowSnackBar: _showSnackBar,
+              controller: controller,
+              onCloseDialog: () => Navigator.of(dialogContext).pop(),
             ),
           ),
         );
@@ -987,6 +1023,120 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
           },
+        ),
+      ),
+    );
+  }
+
+  void _showRouteOptionsBottomSheet(BuildContext context,
+      SimplePassengerModel passenger, SimpleTripModel trip) {
+    final pickupCoords =
+        passenger.closestPickupPoint ?? passenger.pickupCoordinates;
+    final dropoffCoords = passenger.dropoffCoordinates;
+
+    final hasPickup = pickupCoords != null && pickupCoords.length >= 2;
+    final hasDropoff = dropoffCoords != null && dropoffCoords.length >= 2;
+
+    if (!hasPickup && !hasDropoff) {
+      Get.snackbar(
+        'location_error'.tr,
+        'location_coordinates_not_available'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // If only one exists, launch directly.
+    if (hasPickup && !hasDropoff) {
+      _openMap(pickupCoords[0], pickupCoords[1]);
+      return;
+    }
+    if (!hasPickup && hasDropoff) {
+      _openMap(dropoffCoords[0], dropoffCoords[1]);
+      return;
+    }
+
+    // If both exist, show a premium bottom sheet.
+    Get.bottomSheet(
+      Container(
+        width: Get.width,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(Dimensions.paddingSizeLarge),
+            topRight: Radius.circular(Dimensions.paddingSizeLarge),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).hintColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: Dimensions.paddingSizeLarge),
+                Text(
+                  'navigate_to'.tr,
+                  style: textBold.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: Dimensions.paddingSizeDefault),
+                ListTile(
+                  leading: const Icon(Icons.trip_origin_rounded,
+                      color: Color(0xFF2E7D32)),
+                  title: Text(
+                    'pickup_location'.tr,
+                    style: textMedium.copyWith(fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    passenger.displayPickupAddress(trip.startAddress),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textRegular.copyWith(
+                        fontSize: 12, color: Theme.of(context).hintColor),
+                  ),
+                  onTap: () {
+                    Get.back();
+                    if (pickupCoords != null && pickupCoords.length >= 2) {
+                      _openMap(pickupCoords[0], pickupCoords[1]);
+                    }
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading:
+                      const Icon(Icons.flag_rounded, color: Color(0xFFC62828)),
+                  title: Text(
+                    'dropoff_location'.tr,
+                    style: textMedium.copyWith(fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    passenger.displayDropoffAddress(trip.endAddress),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textRegular.copyWith(
+                        fontSize: 12, color: Theme.of(context).hintColor),
+                  ),
+                  onTap: () {
+                    Get.back();
+                    if (dropoffCoords != null && dropoffCoords.length >= 2) {
+                      _openMap(dropoffCoords[0], dropoffCoords[1]);
+                    }
+                  },
+                ),
+                const SizedBox(height: Dimensions.paddingSizeLarge),
+              ],
+            ),
+          ),
         ),
       ),
     );

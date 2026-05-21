@@ -11,6 +11,9 @@ Future<BitmapDescriptor> getMarkerIcon(String url) async {
   final frame = await codec.getNextFrame();
 
   final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+  if (data == null) {
+    return BitmapDescriptor.defaultMarker;
+  }
 
-  return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
+  return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
 }

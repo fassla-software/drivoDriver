@@ -123,6 +123,9 @@ class PassengerMapMarkerHelper {
     final picture = recorder.endRecording();
     final outImage = await picture.toImage(size, size);
     final byteData = await outImage.toByteData(format: ui.ImageByteFormat.png);
-    return byteData!.buffer.asUint8List();
+    if (byteData == null) {
+      return Uint8List(0);
+    }
+    return byteData.buffer.asUint8List();
   }
 }

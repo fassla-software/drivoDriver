@@ -15,8 +15,9 @@ class SimpleTripsController extends GetxController implements GetxService {
   bool get isLoading => _isLoading;
 
   void _showSafeSnackBar(String message, {bool isError = true}) {
-    if (Get.context == null) return;
-    ScaffoldMessenger.of(Get.context!).showSnackBar(SnackBar(
+    final context = Get.context;
+    if (context == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: isError ? Colors.red : Colors.green,
       duration: const Duration(seconds: 3),
@@ -81,8 +82,9 @@ class SimpleTripsController extends GetxController implements GetxService {
       if (response.statusCode == 200) {
         _tripsResponse = SimpleTripsResponseModel.fromJson(response.body);
 
-        if (_tripsResponse?.data != null) {
-          _trips = _tripsResponse!.data!;
+        final tripsData = _tripsResponse?.data;
+        if (tripsData != null) {
+          _trips = tripsData;
           if (kDebugMode) {
             print('=== Loaded ${_trips.length} trips ===');
           }

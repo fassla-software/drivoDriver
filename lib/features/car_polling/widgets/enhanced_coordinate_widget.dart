@@ -85,6 +85,7 @@ class _EnhancedCoordinateWidgetState extends State<EnhancedCoordinateWidget> {
   Widget build(BuildContext context) {
     final hasCoordinates = widget.latController.text.isNotEmpty &&
         widget.lngController.text.isNotEmpty;
+    final selectedLocationName = _selectedLocationName;
 
     if (widget.compactBlueStyle) {
       return _buildCompactBlueTile(context, hasCoordinates);
@@ -129,10 +130,10 @@ class _EnhancedCoordinateWidgetState extends State<EnhancedCoordinateWidget> {
                           color: Theme.of(context).primaryColor,
                         ),
                       ),
-                      if (_selectedLocationName != null) ...[
+                      if (selectedLocationName != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          _selectedLocationName!,
+                          selectedLocationName,
                           style: textRegular.copyWith(
                             fontSize: Dimensions.fontSizeSmall,
                             color: Theme.of(context).hintColor,

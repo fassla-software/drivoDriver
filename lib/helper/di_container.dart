@@ -5,6 +5,7 @@ import 'package:ride_sharing_user_app/features/auth/domain/repositories/auth_rep
 import 'package:ride_sharing_user_app/features/auth/domain/repositories/auth_repository_interface.dart';
 import 'package:ride_sharing_user_app/features/auth/domain/services/auth_service.dart';
 import 'package:ride_sharing_user_app/features/auth/domain/services/auth_service_interface.dart';
+import 'package:ride_sharing_user_app/features/car_polling/controllers/simple_trip_map_controller.dart';
 import 'package:ride_sharing_user_app/features/chat/controllers/chat_controller.dart';
 import 'package:ride_sharing_user_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:ride_sharing_user_app/features/chat/domain/repositories/chat_repository_interface.dart';
@@ -95,6 +96,7 @@ import 'package:ride_sharing_user_app/features/car_polling/domain/services/passe
 import 'package:ride_sharing_user_app/features/car_polling/domain/services/passenger_review_service_interface.dart';
 import 'package:ride_sharing_user_app/features/car_polling/controllers/passenger_review_controller.dart';
 import 'package:ride_sharing_user_app/features/car_polling/controllers/carpool_trip_map_controller.dart';
+import 'package:ride_sharing_user_app/features/car_polling/controllers/simple_trip_otp_controller.dart';
 import 'package:ride_sharing_user_app/features/car_polling/domain/repositories/current_trips_repository.dart';
 import 'package:ride_sharing_user_app/features/car_polling/domain/repositories/current_trips_repository_interface.dart';
 import 'package:ride_sharing_user_app/features/car_polling/domain/services/current_trips_service.dart';
@@ -316,6 +318,8 @@ Future<Map<String, Map<String, String>>> init() async {
   Get.put(CarpoolRoutesController(carpoolRoutesServiceInterface: Get.find()));
   Get.put(PassengerReviewController(passengerReviewService: Get.find()));
   Get.lazyPut(() => BannerController(bannerRepo: Get.find()));
+  Get.lazyPut(() => SimpleTripOtpController(rideServiceInterface: Get.find()),
+      fenix: true);
 
   // Retrieving localized data
   Map<String, Map<String, String>> languages = {};

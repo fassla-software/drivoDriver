@@ -30,6 +30,7 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final passengers = widget.trip.passengers;
     return Scaffold(
       appBar: AppBarWidget(
         title: 'trip_passengers'.tr,
@@ -42,12 +43,12 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
 
           // Passengers List
           Expanded(
-            child: widget.trip.passengers?.isNotEmpty == true
+            child: passengers != null && passengers.isNotEmpty
                 ? ListView.builder(
                     padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
-                    itemCount: widget.trip.passengers!.length,
+                    itemCount: passengers.length,
                     itemBuilder: (context, index) {
-                      final passenger = widget.trip.passengers![index];
+                      final passenger = passengers[index];
                       return _buildPassengerCard(passenger);
                     },
                   )
@@ -169,6 +170,7 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
   }
 
   Widget _buildPassengerCard(Passenger passenger) {
+    final profileImg = passenger.profileImage;
     return Container(
       margin: const EdgeInsets.only(bottom: Dimensions.paddingSizeDefault),
       decoration: BoxDecoration(
@@ -194,10 +196,10 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
                   radius: 30,
                   backgroundColor:
                       Theme.of(context).primaryColor.withOpacity(0.1),
-                  backgroundImage: passenger.profileImage != null
-                      ? NetworkImage(passenger.profileImage!)
+                  backgroundImage: profileImg != null
+                      ? NetworkImage(profileImg)
                       : null,
-                  child: passenger.profileImage == null
+                  child: profileImg == null
                       ? Icon(
                           Icons.person,
                           color: Theme.of(context).primaryColor,
@@ -452,7 +454,8 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
   }
 
   void _acceptPassenger(Passenger passenger) async {
-    if (passenger.carpoolPassengerId == null) {
+    final passengerId = passenger.carpoolPassengerId;
+    if (passengerId == null) {
       Get.showSnackbar(GetSnackBar(
         title: 'error'.tr,
         message: 'invalid_passenger_data'.tr,
@@ -463,20 +466,21 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
     }
 
     final success = await _passengerReviewController
-        .acceptPassenger(passenger.carpoolPassengerId!);
+        .acceptPassenger(passengerId);
 
     if (success) {
       // Optionally remove the passenger from the list or refresh the data
       setState(() {
         widget.trip.passengers?.removeWhere(
-          (p) => p.carpoolPassengerId == passenger.carpoolPassengerId,
+          (p) => p.carpoolPassengerId == passengerId,
         );
       });
     }
   }
 
   void _rejectPassenger(Passenger passenger) async {
-    if (passenger.carpoolPassengerId == null) {
+    final passengerId = passenger.carpoolPassengerId;
+    if (passengerId == null) {
       Get.showSnackbar(GetSnackBar(
         title: 'error'.tr,
         message: 'invalid_passenger_data'.tr,
@@ -491,13 +495,13 @@ class _AllTripsPassengersScreenState extends State<AllTripsPassengersScreen> {
     if (!confirmed) return;
 
     final success = await _passengerReviewController
-        .rejectPassenger(passenger.carpoolPassengerId!);
+        .rejectPassenger(passengerId);
 
     if (success) {
       // Optionally remove the passenger from the list or refresh the data
       setState(() {
         widget.trip.passengers?.removeWhere(
-          (p) => p.carpoolPassengerId == passenger.carpoolPassengerId,
+          (p) => p.carpoolPassengerId == passengerId,
         );
       });
     }

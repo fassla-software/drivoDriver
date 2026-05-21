@@ -51,9 +51,10 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
   }
 
   void _initializeMap() async {
-    if (widget.initialPosition != null) {
-      _selectedPosition = widget.initialPosition;
-      _addMarker(_selectedPosition!);
+    final initPos = widget.initialPosition;
+    if (initPos != null) {
+      _selectedPosition = initPos;
+      _addMarker(initPos);
     } else {
       try {
         Position position = await Geolocator.getCurrentPosition(
@@ -62,11 +63,13 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
             timeLimit: Duration(seconds: 8),
           ),
         );
-        _selectedPosition = LatLng(position.latitude, position.longitude);
-        _addMarker(_selectedPosition!);
+        final currentPos = LatLng(position.latitude, position.longitude);
+        _selectedPosition = currentPos;
+        _addMarker(currentPos);
       } catch (e) {
-        _selectedPosition = Get.find<LocationController>().initialPosition;
-        _addMarker(_selectedPosition!);
+        final fallbackPos = Get.find<LocationController>().initialPosition;
+        _selectedPosition = fallbackPos;
+        _addMarker(fallbackPos);
       }
     }
     setState(() {
@@ -259,6 +262,8 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedPosition = _selectedPosition;
+
     return Scaffold(
       appBar: AppBarWidget(
         title: widget.title,
@@ -271,7 +276,7 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
                 // Google Map
                 GoogleMap(
                   initialCameraPosition: CameraPosition(
-                    target: _selectedPosition ??
+                    target: selectedPosition ??
                         Get.find<LocationController>().initialPosition,
                     zoom: 16,
                   ),
@@ -463,7 +468,7 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
                     ),
                   ),
                 // Selected Coordinates Display
-                if (_selectedPosition != null)
+                if (selectedPosition != null)
                   Positioned(
                     bottom: 80,
                     left: 16,
@@ -503,7 +508,7 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
                               const SizedBox(
                                   width: Dimensions.paddingSizeExtraSmall),
                               Text(
-                                'Lat: ${_selectedPosition!.latitude.toStringAsFixed(6)}',
+                                'Lat: ${selectedPosition.latitude.toStringAsFixed(6)}',
                                 style: textRegular.copyWith(
                                   fontSize: Dimensions.fontSizeSmall,
                                 ),
@@ -518,7 +523,7 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
                               const SizedBox(
                                   width: Dimensions.paddingSizeExtraSmall),
                               Text(
-                                'Lng: ${_selectedPosition!.longitude.toStringAsFixed(6)}',
+                                'Lng: ${selectedPosition.longitude.toStringAsFixed(6)}',
                                 style: textRegular.copyWith(
                                   fontSize: Dimensions.fontSizeSmall,
                                 ),
@@ -536,7 +541,7 @@ class _CoordinatePickerScreenState extends State<CoordinatePickerScreen> {
                   right: 16,
                   child: ElevatedButton(
                     onPressed:
-                        _selectedPosition != null ? _confirmSelection : null,
+                        selectedPosition != null ? _confirmSelection : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       padding: const EdgeInsets.symmetric(

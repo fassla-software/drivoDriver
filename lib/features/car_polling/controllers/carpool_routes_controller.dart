@@ -58,15 +58,16 @@ class CarpoolRoutesController extends GetxController implements GetxService {
         _carpoolRoutesResponse =
             CarpoolRoutesResponseModel.fromJson(response.body);
 
-        if (_carpoolRoutesResponse?.data != null) {
+        final responseData = _carpoolRoutesResponse?.data;
+        if (responseData != null) {
           if (isRefresh || _currentPage == 1) {
-            _carpoolRoutes = _carpoolRoutesResponse!.data!;
+            _carpoolRoutes = responseData;
           } else {
-            _carpoolRoutes.addAll(_carpoolRoutesResponse!.data!);
+            _carpoolRoutes.addAll(responseData);
           }
 
           // Check if there's more data
-          if (_carpoolRoutesResponse!.data!.length < _limit) {
+          if (responseData.length < _limit) {
             _hasMoreData = false;
           }
         } else {
@@ -115,7 +116,8 @@ class CarpoolRoutesController extends GetxController implements GetxService {
 
   /// Check if route has passengers
   bool routeHasPassengers(CarpoolRoute route) {
-    return route.passengersCount != null && route.passengersCount! > 0;
+    final count = route.passengersCount;
+    return count != null && count > 0;
   }
 
   /// Get available seats for a route

@@ -37,12 +37,16 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
   }
 
   void _initializeMap() async {
-    if (widget.initialPosition != null) {
-      _selectedPosition = widget.initialPosition;
-      _addMarker(_selectedPosition!);
+    final initialPos = widget.initialPosition;
+    if (initialPos != null) {
+      _selectedPosition = initialPos;
+      _addMarker(initialPos);
     } else {
-      _selectedPosition = Get.find<LocationController>().initialPosition;
-      _addMarker(_selectedPosition!);
+      final fallbackPos = Get.find<LocationController>().initialPosition;
+      if (fallbackPos != null) {
+        _selectedPosition = fallbackPos;
+        _addMarker(fallbackPos);
+      }
     }
     setState(() {});
   }
@@ -75,9 +79,10 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
   }
 
   void _confirmSelection() {
-    if (_selectedPosition != null) {
+    final selectedPosition = _selectedPosition;
+    if (selectedPosition != null) {
       Get.back(result: {
-        'coordinates': _selectedPosition,
+        'coordinates': selectedPosition,
         'name': _selectedLocationName,
       });
     }
@@ -189,6 +194,8 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedPosition = _selectedPosition;
+
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(widget.title),
@@ -199,7 +206,7 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
           children: [
             GoogleMap(
               initialCameraPosition: CameraPosition(
-                target: _selectedPosition ?? LatLng(37.3349, -122.0090),
+                target: selectedPosition ?? const LatLng(37.3349, -122.0090),
                 zoom: 16,
               ),
               onMapCreated: (GoogleMapController controller) {
@@ -220,32 +227,54 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
                   CupertinoTextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    placeholder: 'Search for location',
-                    onChanged: _searchLocation,
-                    onTap: () {
-                      setState(() {
-                        _showResults = _searchController.text.isNotEmpty;
-                      });
+                    placeholder: 'Search location...',
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(CupertinoIcons.search,
+                          color: CupertinoColors.placeholderText),
+                    ),
+                    suffix: _searchController.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchResults.clear();
+                                _showResults = false;
+                              });
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(CupertinoIcons.clear_thick_circled,
+                                  color: CupertinoColors.placeholderText),
+                            ),
+                          )
+                        : null,
+                    onChanged: (value) {
+                      _searchLocation(value);
                     },
-                    clearButtonMode: OverlayVisibilityMode.editing,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color:
+                          CupertinoColors.systemBackground.resolveFrom(context),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: CupertinoColors.systemGrey4.resolveFrom(context),
+                        width: 1,
+                      ),
+                    ),
                   ),
-                  if (_showResults)
+                  if (_showResults && _searchResults.isNotEmpty)
                     Container(
+                      margin: const EdgeInsets.only(top: 8),
                       constraints: const BoxConstraints(maxHeight: 200),
-                      margin: const EdgeInsets.only(top: 2),
                       decoration: BoxDecoration(
                         color: CupertinoColors.systemBackground
                             .resolveFrom(context),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color:
+                              CupertinoColors.systemGrey4.resolveFrom(context),
+                          width: 1,
+                        ),
                       ),
                       child: _isSearching
                           ? const Center(
@@ -254,49 +283,66 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
                                 child: CupertinoActivityIndicator(),
                               ),
                             )
-                          : _searchResults.isEmpty
-                              ? Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Text('No locations found',
-                                      style: TextStyle(
-                                          color: CupertinoColors.inactiveGray)),
-                                )
-                              : ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: _searchResults.length,
-                                  itemBuilder: (context, index) {
-                                    final result = _searchResults[index];
-                                    return CupertinoButton(
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () => _onResultTap(result),
-                                      child: Container(
-                                        alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12, horizontal: 16),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(result['name'],
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                            Text(result['address'],
-                                                style: const TextStyle(
-                                                    color: CupertinoColors
-                                                        .inactiveGray,
-                                                    fontSize: 13)),
-                                          ],
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _searchResults.length,
+                              itemBuilder: (context, index) {
+                                final result = _searchResults[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    final lat = result['latitude'];
+                                    final lng = result['longitude'];
+                                    if (lat != null && lng != null) {
+                                      final position = LatLng(lat, lng);
+                                      setState(() {
+                                        _selectedPosition = position;
+                                        _selectedLocationName = result['name'];
+                                        _addMarker(position,
+                                            locationName: result['name']);
+                                        _showResults = false;
+                                        _searchController.text = result['name'];
+                                        _mapController?.animateCamera(
+                                            CameraUpdate.newLatLng(position));
+                                      });
+                                    } else {
+                                      _onResultTap(result);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: CupertinoColors.systemGrey5
+                                              .resolveFrom(context),
+                                          width: 0.5,
                                         ),
                                       ),
-                                    );
-                                  },
-                                ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(result['name'] ?? '',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        Text(result['address'] ?? '',
+                                            style: const TextStyle(
+                                                color: CupertinoColors
+                                                    .inactiveGray,
+                                                fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                 ],
               ),
             ),
-            if (_selectedPosition != null)
+            if (selectedPosition != null)
               Positioned(
                 bottom: 80,
                 left: 16,
@@ -323,9 +369,9 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(
-                          'Lat: ${_selectedPosition!.latitude.toStringAsFixed(6)}'),
+                          'Lat: ${selectedPosition.latitude.toStringAsFixed(6)}'),
                       Text(
-                          'Lng: ${_selectedPosition!.longitude.toStringAsFixed(6)}'),
+                          'Lng: ${selectedPosition.longitude.toStringAsFixed(6)}'),
                     ],
                   ),
                 ),
@@ -335,7 +381,7 @@ class _CoordinatePickerScreenIOSState extends State<CoordinatePickerScreenIOS> {
               left: 16,
               right: 16,
               child: CupertinoButton.filled(
-                onPressed: _selectedPosition != null ? _confirmSelection : null,
+                onPressed: selectedPosition != null ? _confirmSelection : null,
                 child: const Text('Confirm Location'),
               ),
             ),

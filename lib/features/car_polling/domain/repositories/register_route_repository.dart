@@ -57,8 +57,17 @@ class RegisterRouteRepository implements RegisterRouteRepositoryInterface {
         }
       }
 
+      final statusCode = response.statusCode;
+      if (statusCode == null) {
+        return RegisterRouteResponseModel(
+          success: false,
+          message: 'network_connection_failed'.tr,
+          data: response.body,
+        );
+      }
+
       // Handle client errors (4xx)
-      if (response.statusCode! >= 400 && response.statusCode! < 500) {
+      if (statusCode >= 400 && statusCode < 500) {
         if (response.body != null) {
           try {
             final errorResponse =
@@ -67,7 +76,7 @@ class RegisterRouteRepository implements RegisterRouteRepositoryInterface {
           } catch (e) {
             print('====> Error parsing error response: $e');
             String errorMessage =
-                _getErrorMessageByStatusCode(response.statusCode!);
+                _getErrorMessageByStatusCode(statusCode);
             return RegisterRouteResponseModel(
               success: false,
               message: errorMessage,
@@ -76,7 +85,7 @@ class RegisterRouteRepository implements RegisterRouteRepositoryInterface {
           }
         } else {
           String errorMessage =
-              _getErrorMessageByStatusCode(response.statusCode!);
+              _getErrorMessageByStatusCode(statusCode);
           return RegisterRouteResponseModel(
             success: false,
             message: errorMessage,
@@ -86,7 +95,7 @@ class RegisterRouteRepository implements RegisterRouteRepositoryInterface {
       }
 
       // Handle server errors (5xx)
-      if (response.statusCode! >= 500) {
+      if (statusCode >= 500) {
         return RegisterRouteResponseModel(
           success: false,
           message: 'server_error_occurred'.tr,

@@ -257,9 +257,16 @@ class CurrentTrip {
   int get seatsAvailableCount => seatsAvailable ?? 0;
   List<AcceptedPassenger>? get passengers => acceptedPassengers;
   List<Passenger>? get pendingPassengersList => pendingPassengers;
-  String? get vehicleName => vehicleInfo?.model != null
-      ? '${vehicleInfo!.brand}-${vehicleInfo!.model}'
-      : vehicleInfo?.brand;
+  String? get vehicleName {
+    final info = vehicleInfo;
+    if (info == null) return null;
+    final brand = info.brand;
+    final model = info.model;
+    if (model != null && brand != null) {
+      return '$brand-$model';
+    }
+    return brand ?? model;
+  }
 
   // Helper for price
   double? get priceAmount => price;
@@ -443,20 +450,22 @@ class AcceptedPassenger {
   String? get passengerPhone => null;
   String? get dropoffAddress => null;
   TripCoordinates? get pickupCoordinates {
-    if (startCoordinates != null && startCoordinates!.length >= 2) {
+    final startCoords = startCoordinates;
+    if (startCoords != null && startCoords.length >= 2) {
       return TripCoordinates(
-        lat: startCoordinates![1], // longitude is first in API response
-        lng: startCoordinates![0], // latitude is second in API response
+        lat: startCoords[1], // longitude is first in API response
+        lng: startCoords[0], // latitude is second in API response
       );
     }
     return null;
   }
 
   TripCoordinates? get dropoffCoordinates {
-    if (endCoordinates != null && endCoordinates!.length >= 2) {
+    final endCoords = endCoordinates;
+    if (endCoords != null && endCoords.length >= 2) {
       return TripCoordinates(
-        lat: endCoordinates![1], // longitude is first in API response
-        lng: endCoordinates![0], // latitude is second in API response
+        lat: endCoords[1], // longitude is first in API response
+        lng: endCoords[0], // latitude is second in API response
       );
     }
     return null;
