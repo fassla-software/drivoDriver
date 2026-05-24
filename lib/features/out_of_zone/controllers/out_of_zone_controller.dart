@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:ride_sharing_user_app/data/api_checker.dart';
+import 'package:ride_sharing_user_app/features/location/controllers/location_controller.dart';
 import 'package:ride_sharing_user_app/features/out_of_zone/domain/models/zone_list_model.dart';
 import 'package:ride_sharing_user_app/features/out_of_zone/domain/service/out_of_zone_service_interface.dart';
 import 'package:ride_sharing_user_app/features/out_of_zone/widgets/out_of_zone_bottoms_sheet_widget.dart';
@@ -12,7 +13,18 @@ class OutOfZoneController extends GetxController implements GetxService {
   OutOfZoneController({required this.outOfZoneServiceInterface});
 
   ZoneListModel? zoneListModel;
-  late Position location;
+  Position location = Position(
+    longitude: 0,
+    latitude: 0,
+    timestamp: DateTime.now(),
+    accuracy: 1,
+    altitude: 1,
+    heading: 1,
+    speed: 1,
+    speedAccuracy: 1,
+    altitudeAccuracy: 1,
+    headingAccuracy: 1,
+  );
   bool isDriverOutOfZone = false;
   List<List<LatLngPoint>> polygones = [];
   List<LatLngPoint> nearestZone = [];
@@ -38,15 +50,36 @@ class OutOfZoneController extends GetxController implements GetxService {
     }
   }
 
-  Future getDriverCurrentPosition() async {
-    location = await Geolocator.getCurrentPosition(
-      timeLimit: const Duration(seconds: 5),
-      desiredAccuracy: LocationAccuracy.high,
-    );
+  Future<bool> getDriverCurrentPosition() async {
+    try {
+      Position newLocation = await Geolocator.getCurrentPosition(
+        timeLimit: const Duration(seconds: 5),
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      location = newLocation;
+      return true;
+    } catch (e) {
+      try {
+        Position? lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          location = lastKnown;
+          return true;
+        }
+      } catch (_) {}
+      if (Get.isRegistered<LocationController>()) {
+        location = Get.find<LocationController>().position;
+        return true;
+      }
+      return false;
+    }
   }
 
   Future<void> findDriverCurrentZone() async {
-    await getDriverCurrentPosition();
+    bool gotPosition = await getDriverCurrentPosition();
+    if (!gotPosition) {
+      isDriverOutOfZone = false;
+      return;
+    }
     for (int i = 0; i < polygones.length; i++) {
       if (MapHelper.isPointInPolygon(
           LatLngPoint(location.latitude, location.longitude), polygones[i])) {
@@ -69,7 +102,10 @@ class OutOfZoneController extends GetxController implements GetxService {
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      await getDriverCurrentPosition();
+      bool gotPosition = await getDriverCurrentPosition();
+      if (!gotPosition) {
+        return;
+      }
       if (!MapHelper.isPointInPolygon(
           LatLngPoint(location.latitude, location.longitude), currentZone)) {
         nearestZone = MapHelper.findNearestPolygon(

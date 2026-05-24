@@ -472,68 +472,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                 MainAxisAlignment
                                                                     .spaceBetween,
                                                             children: [
-                                                              Row(
-                                                                children: [
-                                                                  Container(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            8),
-                                                                    decoration:
-                                                                        BoxDecoration(
-                                                                      color: Colors
-                                                                          .orange
-                                                                          .withValues(
-                                                                              alpha: 0.2),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              12),
+                                                              Expanded(
+                                                                child: Row(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding:
+                                                                          const EdgeInsets
+                                                                              .all(
+                                                                              8),
+                                                                      decoration:
+                                                                          BoxDecoration(
+                                                                        color: Colors
+                                                                            .orange
+                                                                            .withValues(
+                                                                                alpha: 0.2),
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                                12),
+                                                                      ),
+                                                                      child: Icon(
+                                                                        Icons
+                                                                            .warning,
+                                                                        size: 24,
+                                                                        color: Colors
+                                                                            .orange
+                                                                            .shade700,
+                                                                      ),
                                                                     ),
-                                                                    child: Icon(
-                                                                      Icons
-                                                                          .warning,
-                                                                      size: 24,
-                                                                      color: Colors
-                                                                          .orange
-                                                                          .shade700,
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                      width: Dimensions
-                                                                          .paddingSizeDefault),
-                                                                  Expanded(
-                                                                    child:
-                                                                        Column(
-                                                                      crossAxisAlignment:
-                                                                          CrossAxisAlignment
-                                                                              .start,
-                                                                      children: [
-                                                                        Text(
-                                                                          'you_are_out_of_zone'
-                                                                              .tr,
-                                                                          style:
-                                                                              textBold.copyWith(
-                                                                            fontSize:
-                                                                                Dimensions.fontSizeDefault,
-                                                                            color:
-                                                                                Colors.orange.shade700,
+                                                                    const SizedBox(
+                                                                        width: Dimensions
+                                                                            .paddingSizeDefault),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Column(
+                                                                        crossAxisAlignment:
+                                                                            CrossAxisAlignment
+                                                                                .start,
+                                                                        children: [
+                                                                          Text(
+                                                                            'you_are_out_of_zone'
+                                                                                .tr,
+                                                                            style:
+                                                                                textBold.copyWith(
+                                                                              fontSize:
+                                                                                  Dimensions.fontSizeDefault,
+                                                                              color:
+                                                                                  Colors.orange.shade700,
+                                                                            ),
                                                                           ),
-                                                                        ),
-                                                                        Text(
-                                                                          'to_get_request_must'
-                                                                              .tr,
-                                                                          style:
-                                                                              textRegular.copyWith(
-                                                                            fontSize:
-                                                                                12,
-                                                                            color:
-                                                                                Colors.orange.shade600,
+                                                                          Text(
+                                                                            'to_get_request_must'
+                                                                                .tr,
+                                                                            style:
+                                                                                textRegular.copyWith(
+                                                                              fontSize:
+                                                                                  12,
+                                                                              color:
+                                                                                  Colors.orange.shade600,
+                                                                            ),
                                                                           ),
-                                                                        ),
-                                                                      ],
+                                                                        ],
+                                                                      ),
                                                                     ),
-                                                                  ),
-                                                                ],
+                                                                  ],
+                                                                ),
                                                               ),
                                                               Icon(
                                                                 Icons

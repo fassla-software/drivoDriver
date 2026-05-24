@@ -42,6 +42,9 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
     });
   }
 
+  String get _mappedRideType =>
+      widget.type == 'single' ? 'trip' : widget.type;
+
   void _loadDateTimeFromController(RegisterRouteController controller) {
     final raw = controller.startTimeController.text;
     if (raw.isEmpty) return;
@@ -49,21 +52,45 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
       final dt = DateFormat('yyyy-MM-dd HH:mm:ss').parse(raw);
       setState(() {
         _departureDate = dt;
-        _departureTime = TimeOfDay.fromDateTime(dt);
+        if (_mappedRideType != 'routine') {
+          _departureTime = TimeOfDay.fromDateTime(dt);
+        }
       });
     } catch (_) {}
   }
 
+  TimeOfDay _routineDepartureTimeOfDay(RegisterRouteController controller) {
+    final raw = controller.departureTimeController.text.trim();
+    if (raw.isEmpty) return const TimeOfDay(hour: 0, minute: 0);
+    final parts = raw.split(':');
+    if (parts.length != 2) return const TimeOfDay(hour: 0, minute: 0);
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) {
+      return const TimeOfDay(hour: 0, minute: 0);
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
   void _saveDateTimeToController(RegisterRouteController controller) {
     final departureDate = _departureDate;
-    final departureTime = _departureTime;
-    if (departureDate == null || departureTime == null) return;
+    if (departureDate == null) return;
+
+    final TimeOfDay effectiveTime;
+    if (_mappedRideType == 'routine') {
+      effectiveTime = _routineDepartureTimeOfDay(controller);
+    } else {
+      final departureTime = _departureTime;
+      if (departureTime == null) return;
+      effectiveTime = departureTime;
+    }
+
     final dt = DateTime(
       departureDate.year,
       departureDate.month,
       departureDate.day,
-      departureTime.hour,
-      departureTime.minute,
+      effectiveTime.hour,
+      effectiveTime.minute,
     );
     controller.startTimeController.text =
         DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
@@ -248,7 +275,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                                 ),
                               ],
                             ),
-                            if (rideType == 'trip' || rideType == 'travel') ...[
+                            if (rideType == 'trip' || rideType == 'travel' || rideType == 'routine' || rideType == 'north cost') ...[
                               const SizedBox(height: 22),
                               _buildExpandable(
                                 title: 'ride_preferences'.tr,
@@ -258,7 +285,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                                 child: _buildPreferences(controller),
                               ),
                             ],
-                            if (rideType == 'trip' || rideType == 'travel') ...[
+                            if (rideType == 'trip' || rideType == 'travel' || rideType == 'routine' || rideType == 'north cost') ...[
                               const SizedBox(height: 10),
                               _buildExpandable(
                                 title: 'vehicle_features'.tr,
@@ -927,6 +954,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
       setState(() {
         controller.departureTimeController.text = '$hour:$minute';
       });
+      _saveDateTimeToController(controller);
     }
   }
 

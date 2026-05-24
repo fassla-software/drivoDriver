@@ -57,8 +57,32 @@ class _OutOfZoneMapScreenState extends State<OutOfZoneMapScreen> {
           PatternItem.gap(8),
         ]));
 
-    location = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    try {
+      location = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+    } catch (e) {
+      try {
+        Position? lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          location = lastKnown;
+        }
+      } catch (_) {}
+      if (location == null && Get.isRegistered<LocationController>()) {
+        location = Get.find<LocationController>().position;
+      }
+      location ??= Position(
+        longitude: 0,
+        latitude: 0,
+        timestamp: DateTime.now(),
+        accuracy: 1,
+        altitude: 1,
+        heading: 1,
+        speed: 1,
+        speedAccuracy: 1,
+        altitudeAccuracy: 1,
+        headingAccuracy: 1,
+      );
+    }
 
     byteData = await assetBundle.load(Images.carTop);
     _markers.add(Marker(
@@ -69,10 +93,34 @@ class _OutOfZoneMapScreenState extends State<OutOfZoneMapScreen> {
 
     _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
       _markers = {};
-      location = await Geolocator.getCurrentPosition(
-        timeLimit: const Duration(seconds: 1),
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      try {
+        location = await Geolocator.getCurrentPosition(
+          timeLimit: const Duration(seconds: 1),
+          desiredAccuracy: LocationAccuracy.high,
+        );
+      } catch (e) {
+        try {
+          Position? lastKnown = await Geolocator.getLastKnownPosition();
+          if (lastKnown != null) {
+            location = lastKnown;
+          }
+        } catch (_) {}
+        if (location == null && Get.isRegistered<LocationController>()) {
+          location = Get.find<LocationController>().position;
+        }
+        location ??= Position(
+          longitude: 0,
+          latitude: 0,
+          timestamp: DateTime.now(),
+          accuracy: 1,
+          altitude: 1,
+          heading: 1,
+          speed: 1,
+          speedAccuracy: 1,
+          altitudeAccuracy: 1,
+          headingAccuracy: 1,
+        );
+      }
 
       _markers.add(Marker(
           markerId: const MarkerId('marker id'),
