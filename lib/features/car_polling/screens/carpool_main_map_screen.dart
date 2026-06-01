@@ -436,6 +436,7 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
               expandableContent: Builder(builder: (context) {
                 final passengers = trip?.passengers;
                 return Container(
+                  color: Colors.white,
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -796,11 +797,59 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        passenger.name ?? 'unknown_passenger'.tr,
-                        style: textMedium.copyWith(
-                          fontSize: Dimensions.fontSizeDefault,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              passenger.name ?? 'unknown_passenger'.tr,
+                              style: textMedium.copyWith(
+                                fontSize: Dimensions.fontSizeDefault,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (trip?.isTripStarted == 1 &&
+                              trip?.tripStatus == 'accepted')
+                            GetBuilder<SimpleTripOtpController>(
+                              builder: (controller) {
+                                return InkWell(
+                                  onTap: () => _showOtpVerificationDialog(
+                                      passenger, controller),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .primaryColor
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.verified_user,
+                                          size: 14,
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'OTP',
+                                          style: textMedium.copyWith(
+                                            fontSize: 11,
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -842,9 +891,7 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
                           borderRadius: BorderRadius.circular(10),
                           child: PassengerRouteInfoWidget(
                             passenger: passenger,
-                            tripStartAddress: trip.startAddress,
-                            tripEndAddress: trip.endAddress,
-                            compact: true,
+                            tripId: trip.id.toString(),
                           ),
                         ),
                     ],
@@ -852,33 +899,7 @@ class _CarpoolMainMapScreenState extends State<CarpoolMainMapScreen>
                 ),
 
                 /// OTP Button
-                GetBuilder<SimpleTripOtpController>(
-                  builder: (SimpleTripOtpController controller) {
-                    // final isChecking = controller.isCheckingOtp;
 
-                    // if (isChecking) {
-                    //   return const SizedBox(
-                    //     width: 40,
-                    //     height: 40,
-                    //     child: Center(
-                    //       child: CircularProgressIndicator(strokeWidth: 2),
-                    //     ),
-                    //   );
-                    // }
-
-                    return ElevatedButton.icon(
-                      onPressed: () =>
-                          _showOtpVerificationDialog(passenger, controller),
-                      icon: const Icon(Icons.verified_user, size: 16),
-                      label: Text(
-                        'OTP',
-                        style: textMedium.copyWith(
-                          fontSize: Dimensions.fontSizeSmall,
-                        ),
-                      ),
-                    );
-                  },
-                ),
                 const SizedBox(height: Dimensions.paddingSizeSmall),
 
                 /// Status

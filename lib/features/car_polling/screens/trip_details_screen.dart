@@ -18,6 +18,7 @@ const _lightBlue = Color.fromARGB(255, 213, 228, 248);
 Color _headerColor(String? status) {
   switch (status) {
     case 'pending':
+    case 'return_pending':
     case 'ongoing':
       return _inkBlack;
     case 'completed':
@@ -27,6 +28,22 @@ Color _headerColor(String? status) {
     default:
       return _inkBlack;
   }
+}
+
+String _formatTimeString(String? timeStr) {
+  if (timeStr == null || timeStr.isEmpty) return 'N/A';
+  try {
+    final parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+      final ampm = hour >= 12 ? 'PM' : 'AM';
+      final formattedHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      final formattedMinute = minute.toString().padLeft(2, '0');
+      return '${formattedHour.toString().padLeft(2, '0')}:$formattedMinute $ampm';
+    }
+  } catch (_) {}
+  return timeStr;
 }
 
 class TripDetailsScreen extends StatelessWidget {
@@ -47,6 +64,7 @@ class TripDetailsScreen extends StatelessWidget {
         // Ensure we are using the latest trip data if available in the controller
         final currentTrip =
             controller.trips.firstWhereOrNull((t) => t.id == trip.id) ?? trip;
+        final isRoutine = currentTrip.carpoolType?.toLowerCase() == 'routine';
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Dimensions.paddingSizeLarge),
@@ -55,8 +73,107 @@ class TripDetailsScreen extends StatelessWidget {
             children: [
               _buildHeader(context, controller, currentTrip),
               const SizedBox(height: Dimensions.paddingSizeDefault),
-              _buildRouteInfo(context, currentTrip),
-              const SizedBox(height: Dimensions.paddingSizeDefault),
+              if (isRoutine) ...[
+                // Blue badge pill
+                Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _activeBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border:
+                          Border.all(color: _activeBlue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.people_rounded,
+                            size: 16, color: _activeBlue),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Same Passengers for Both Trips',
+                          style: textMedium.copyWith(
+                            fontSize: Dimensions.fontSizeSmall,
+                            color: _activeBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Dimensions.paddingSizeDefault),
+
+                // Morning Trip Leg Card
+                RoutineTripLegCard(
+                  title: 'Morning Trip',
+                  icon: Icons.wb_sunny_rounded,
+                  time: _formatTimeString(currentTrip.departureTime),
+                  pickupAddress:
+                      currentTrip.startAddress ?? 'unknown_location'.tr,
+                  dropoffAddress:
+                      currentTrip.endAddress ?? 'unknown_location'.tr,
+                  buttonLabel: 'Start Morning Trip',
+                  isButtonEnabled: currentTrip.canStartOutbound ?? true,
+                  isButtonLoading:
+                      controller.isTripBeingStarted(currentTrip.id ?? 0) &&
+                          currentTrip.effectiveTripLeg == 'outbound',
+                  onPressed: () => controller.startTrip(currentTrip.id ?? 0),
+                  onPickupMapPressed: () {
+                    if (currentTrip.startCoordinates != null &&
+                        currentTrip.startCoordinates!.length >= 2) {
+                      _openMap(currentTrip.startCoordinates![0],
+                          currentTrip.startCoordinates![1]);
+                    }
+                  },
+                  onDropoffMapPressed: () {
+                    if (currentTrip.endCoordinates != null &&
+                        currentTrip.endCoordinates!.length >= 2) {
+                      _openMap(currentTrip.endCoordinates![0],
+                          currentTrip.endCoordinates![1]);
+                    }
+                  },
+                ),
+                const SizedBox(height: Dimensions.paddingSizeDefault),
+
+                // Evening Return Leg Card
+                if (currentTrip.hasReturnLeg == true) ...[
+                  RoutineTripLegCard(
+                    title: 'Evening Return',
+                    icon: Icons.nightlight_round,
+                    time: _formatTimeString(currentTrip.returnTime),
+                    pickupAddress:
+                        currentTrip.endAddress ?? 'unknown_location'.tr,
+                    dropoffAddress:
+                        currentTrip.startAddress ?? 'unknown_location'.tr,
+                    buttonLabel: 'Start Evening Return',
+                    isButtonEnabled: currentTrip.canStartReturn ?? true,
+                    isButtonLoading:
+                        controller.isTripBeingStarted(currentTrip.id ?? 0) &&
+                            currentTrip.effectiveTripLeg == 'return',
+                    onPressed: () => controller.startTrip(currentTrip.id ?? 0),
+                    onPickupMapPressed: () {
+                      if (currentTrip.endCoordinates != null &&
+                          currentTrip.endCoordinates!.length >= 2) {
+                        _openMap(currentTrip.endCoordinates![0],
+                            currentTrip.endCoordinates![1]);
+                      }
+                    },
+                    onDropoffMapPressed: () {
+                      if (currentTrip.startCoordinates != null &&
+                          currentTrip.startCoordinates!.length >= 2) {
+                        _openMap(currentTrip.startCoordinates![0],
+                            currentTrip.startCoordinates![1]);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: Dimensions.paddingSizeDefault),
+                ],
+              ] else ...[
+                _buildRouteInfo(context, currentTrip),
+                const SizedBox(height: Dimensions.paddingSizeDefault),
+              ],
               _buildTripInfo(context, controller, currentTrip),
               const SizedBox(height: Dimensions.paddingSizeDefault),
               Builder(
@@ -69,7 +186,9 @@ class TripDetailsScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: Dimensions.paddingSizeLarge),
-              _buildActionButtons(context, controller, currentTrip),
+              if (currentTrip.tripStatus == 'ongoing') ...[
+                _buildActionButtons(context, controller, currentTrip),
+              ],
             ],
           ),
         );
@@ -80,6 +199,112 @@ class TripDetailsScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context, SimpleTripsController controller,
       SimpleTripModel trip) {
     final headerColor = _headerColor(trip.tripStatus);
+    final isRoutine = trip.carpoolType?.toLowerCase() == 'routine';
+
+    if (isRoutine) {
+      return Container(
+        padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
+        decoration: BoxDecoration(
+          color: headerColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'trip_id'.tr,
+                      style: textRegular.copyWith(
+                        fontSize: Dimensions.fontSizeSmall,
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    Text(
+                      ' #${trip.id}',
+                      style: textBold.copyWith(
+                        fontSize: Dimensions.fontSizeLarge,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                  ),
+                  child: Text(
+                    controller.getTripStatusDisplayText(trip.tripStatus),
+                    style: textMedium.copyWith(
+                      color: Colors.white,
+                      fontSize: Dimensions.fontSizeSmall,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.wb_sunny_outlined,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${trip.formattedStartDate} • ${_formatTimeString(trip.departureTime)} (Morning)',
+                    style: textRegular.copyWith(
+                      fontSize: Dimensions.fontSizeSmall,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (trip.hasReturnLeg == true) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.nightlight_round_outlined,
+                    size: 16,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${trip.formattedStartDate} • ${_formatTimeString(trip.returnTime)} (Evening Return)',
+                      style: textRegular.copyWith(
+                        fontSize: Dimensions.fontSizeSmall,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(Dimensions.paddingSizeDefault),
@@ -287,7 +512,8 @@ class TripDetailsScreen extends StatelessWidget {
               if (vehicleName != null) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: _buildInfoRow(Icons.directions_car_rounded, vehicleName),
+                  child:
+                      _buildInfoRow(Icons.directions_car_rounded, vehicleName),
                 );
               }
               return const SizedBox();
@@ -707,11 +933,7 @@ class TripDetailsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: PassengerRouteInfoWidget(
                       passenger: passenger,
-                      tripStartAddress: trip.startAddress,
-                      tripEndAddress: trip.endAddress,
-                      backgroundColor: _lightBlue.withValues(alpha: 0.45),
-                      labelColor: _inkBlack.withValues(alpha: 0.5),
-                      textColor: _inkBlack,
+                      tripId: trip.id.toString(),
                     ),
                   ),
                 ),
@@ -1078,6 +1300,219 @@ class TripDetailsScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class RoutineTripLegCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final String time;
+  final String pickupAddress;
+  final String dropoffAddress;
+  final String buttonLabel;
+  final bool isButtonEnabled;
+  final bool isButtonLoading;
+  final VoidCallback? onPressed;
+  final VoidCallback? onPickupMapPressed;
+  final VoidCallback? onDropoffMapPressed;
+
+  const RoutineTripLegCard({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.time,
+    required this.pickupAddress,
+    required this.dropoffAddress,
+    required this.buttonLabel,
+    required this.isButtonEnabled,
+    this.isButtonLoading = false,
+    this.onPressed,
+    this.onPickupMapPressed,
+    this.onDropoffMapPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const activeBlue = Color(0xFF2F6BFF);
+    const lightBlue = Color.fromARGB(255, 213, 228, 248);
+    const inkBlack = Color(0xFF111111);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: lightBlue.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: lightBlue,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: activeBlue, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: textBold.copyWith(
+                  fontSize: 16,
+                  color: activeBlue,
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.schedule, size: 16, color: activeBlue),
+              const SizedBox(width: 4),
+              Text(
+                time,
+                style: textMedium.copyWith(
+                  fontSize: 14,
+                  color: activeBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Custom Timeline for Pickup & Dropoff
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon timeline vertical column
+              Column(
+                children: [
+                  const Icon(Icons.radio_button_checked_rounded,
+                      color: activeBlue, size: 20),
+                  Container(
+                    width: 2,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: activeBlue.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                  const Icon(Icons.flag_rounded, color: activeBlue, size: 20),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Pickup Details
+                    Text(
+                      'starting_point'.tr,
+                      style: textMedium.copyWith(
+                        fontSize: 11,
+                        color: inkBlack.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      pickupAddress,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textMedium.copyWith(
+                        fontSize: 13,
+                        color: inkBlack,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Dropoff Details
+                    Text(
+                      'destination'.tr,
+                      style: textMedium.copyWith(
+                        fontSize: 11,
+                        color: inkBlack.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      dropoffAddress,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textMedium.copyWith(
+                        fontSize: 13,
+                        color: inkBlack,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Map buttons for quick navigation
+              Column(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.map_outlined,
+                        color: activeBlue.withValues(alpha: 0.8), size: 20),
+                    onPressed: onPickupMapPressed,
+                  ),
+                  const SizedBox(height: 18),
+                  IconButton(
+                    icon: Icon(Icons.map_outlined,
+                        color: activeBlue.withValues(alpha: 0.8), size: 20),
+                    onPressed: onDropoffMapPressed,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: isButtonEnabled && !isButtonLoading ? onPressed : null,
+              icon: isButtonLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.play_arrow_rounded, color: Colors.white),
+              label: Text(
+                buttonLabel,
+                style: textMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: activeBlue,
+                disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

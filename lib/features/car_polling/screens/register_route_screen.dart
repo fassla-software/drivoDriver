@@ -24,7 +24,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
   static const _inkBlack = Color(0xFF111111);
   static const _activeBlue = Color(0xFF2F6BFF);
 
-  bool _showPreferences = false;
+  bool _showPreferences = true;
   bool _showFeatures = false;
   bool _showRestStops = false;
   DateTime? _departureDate;
@@ -42,8 +42,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
     });
   }
 
-  String get _mappedRideType =>
-      widget.type == 'single' ? 'trip' : widget.type;
+  String get _mappedRideType => widget.type == 'single' ? 'trip' : widget.type;
 
   void _loadDateTimeFromController(RegisterRouteController controller) {
     final raw = controller.startTimeController.text;
@@ -275,7 +274,10 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                                 ),
                               ],
                             ),
-                            if (rideType == 'trip' || rideType == 'travel' || rideType == 'routine' || rideType == 'north cost') ...[
+                            if (rideType == 'trip' ||
+                                rideType == 'travel' ||
+                                rideType == 'routine' ||
+                                rideType == 'north_coast') ...[
                               const SizedBox(height: 22),
                               _buildExpandable(
                                 title: 'ride_preferences'.tr,
@@ -285,7 +287,10 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
                                 child: _buildPreferences(controller),
                               ),
                             ],
-                            if (rideType == 'trip' || rideType == 'travel' || rideType == 'routine' || rideType == 'north cost') ...[
+                            if (rideType == 'trip' ||
+                                rideType == 'travel' ||
+                                rideType == 'routine' ||
+                                rideType == 'north_coast') ...[
                               const SizedBox(height: 10),
                               _buildExpandable(
                                 title: 'vehicle_features'.tr,
@@ -568,6 +573,7 @@ class _RegisterRouteScreenState extends State<RegisterRouteScreen> {
           style: textMedium.copyWith(fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: textRegular.copyWith(color: Colors.grey, fontSize: 14),
             prefixIcon:
                 icon != null ? Icon(icon, size: 20, color: _activeBlue) : null,
             suffixText: suffix,

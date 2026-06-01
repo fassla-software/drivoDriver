@@ -4,6 +4,7 @@ import 'package:just_the_tooltip/just_the_tooltip.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:ride_sharing_user_app/common_widgets/button_widget.dart';
 import 'package:ride_sharing_user_app/common_widgets/expandable_bottom_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:ride_sharing_user_app/common_widgets/image_widget.dart';
 import 'package:ride_sharing_user_app/common_widgets/swipable_button/slider_buttion_widget.dar.dart';
 import 'package:ride_sharing_user_app/features/chat/controllers/chat_controller.dart';
@@ -23,6 +24,8 @@ import 'package:ride_sharing_user_app/localization/localization_controller.dart'
 import 'package:ride_sharing_user_app/util/dimensions.dart';
 import 'package:ride_sharing_user_app/util/images.dart';
 import 'package:ride_sharing_user_app/util/styles.dart';
+
+import '../../../util/app_constants.dart';
 
 class RideAcceptedWidget extends StatefulWidget {
   final GlobalKey<ExpandableBottomSheetState> expandableKey;
@@ -49,8 +52,6 @@ class _RideAcceptedWidgetState extends State<RideAcceptedWidget> {
     });
     super.initState();
   }
-
- 
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +253,25 @@ class _RideAcceptedWidgetState extends State<RideAcceptedWidget> {
                               ]),
                         ),
                       ),
+                      if (rideController.tripDetail?.type == 'parcel')
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: Dimensions.paddingSizeLarge,
+                            right: Dimensions.paddingSizeLarge,
+                            bottom: Dimensions.paddingSizeDefault,
+                          ),
+                          child: ButtonWidget(
+                            fontSize: Dimensions.fontSizeSmall,
+                            buttonText: 'track_now'.tr,
+                            width: Get.width,
+                            height: 36,
+                            onPressed: () => launchUrl(
+                              Uri.parse(_getParcelTrackUrl(
+                                  rideController.tripDetail!.refId)),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                          ),
+                        ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: Dimensions.paddingSizeDefault),
@@ -680,5 +700,9 @@ class _RideAcceptedWidgetState extends State<RideAcceptedWidget> {
     } else {
       return 'the_receiver_pay_the_bill'.tr;
     }
+  }
+
+  String _getParcelTrackUrl(String? refId) {
+    return '${AppConstants.baseUrl}/track-parcel/${refId ?? ''}';
   }
 }

@@ -106,6 +106,7 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
           if (ctrl.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
+          print('all markers points: ${ctrl.markers.length}');
 
           final trip = widget.trip;
           final passengers = trip.passengers;
@@ -210,10 +211,179 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                   ),
                 ),
               ),
+              if (passengers != null && passengers.isNotEmpty)
+                Positioned(
+                  bottom: _passengersPanelPosition.dy,
+                  left: _passengersPanelPosition.dx,
+                  child: GestureDetector(
+                    onPanUpdate: (details) {
+                      setState(() {
+                        _passengersPanelPosition = Offset(
+                          (_passengersPanelPosition.dx + details.delta.dx)
+                              .clamp(
+                            0,
+                            MediaQuery.of(context).size.width - 300,
+                          ),
+                          (_passengersPanelPosition.dy + details.delta.dy)
+                              .clamp(
+                            50,
+                            MediaQuery.of(context).size.height - 400,
+                          ),
+                        );
+                      });
+                    },
+                    onPanStart: (details) {
+                      // Add haptic feedback when starting to drag
+                      HapticFeedback.lightImpact();
+                    },
+                    child: Container(
+                      width: 300,
+                      constraints: const BoxConstraints(maxHeight: 400),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                            spreadRadius: 2,
+                          ),
+                          BoxShadow(
+                            color:
+                                Theme.of(context).primaryColor.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          Container(
+                            padding: const EdgeInsets.all(
+                                Dimensions.paddingSizeDefault),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.people,
+                                  color: Theme.of(context).primaryColor,
+                                  size: 20,
+                                ),
+                                const SizedBox(
+                                    width: Dimensions.paddingSizeSmall),
+                                Expanded(
+                                  child: Text(
+                                    'passengers'.tr,
+                                    style: textBold.copyWith(
+                                      fontSize: Dimensions.fontSizeDefault,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                    width: Dimensions.paddingSizeSmall),
+                                // Drag indicator
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _passengersPanelPosition =
+                                          const Offset(16, 100);
+                                    });
+                                  },
+                                  child: Icon(
+                                    Icons.drag_handle,
+                                    color: Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.6),
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(
+                                    width: Dimensions.paddingSizeSmall),
+                                // Close button
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    setState(() {
+                                      // Hide the panel by moving it off screen
+                                      _passengersPanelPosition = Offset(
+                                        MediaQuery.of(context).size.width + 100,
+                                        _passengersPanelPosition.dy,
+                                      );
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                    width: Dimensions.paddingSizeSmall),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).primaryColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${passengers.length}',
+                                    style: textMedium.copyWith(
+                                      color: Colors.white,
+                                      fontSize: Dimensions.fontSizeExtraSmall,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Passengers List
+                          Flexible(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.all(
+                                  Dimensions.paddingSizeDefault),
+                              itemCount: passengers.length,
+                              itemBuilder: (context, index) {
+                                final passenger = passengers[index];
+                                return _buildPassengerCard(passenger);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
 
               // Unified Trip Information Panel - Top Center
               Positioned(
-                top: MediaQuery.of(context).size.height - 420,
+                bottom: MediaQuery.of(context).size.height - 420,
                 left: 16,
                 right: 16,
                 child: Material(
@@ -474,97 +644,6 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                           if (passengerCoordinates != null &&
                               passengerCoordinates.isNotEmpty) ...[
                             const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.1),
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.route,
-                                        color: Theme.of(context).primaryColor,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${ctrl.mainRoutePoints.length} ${'route_points'.tr}',
-                                        style: textMedium.copyWith(
-                                          color: Theme.of(context).primaryColor,
-                                          fontSize: Dimensions.fontSizeSmall,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        hasPolyline
-                                            ? Icons.check_circle
-                                            : Icons.error_outline,
-                                        color: hasPolyline
-                                            ? Colors.green
-                                            : Colors.red,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        hasPolyline ? 'server'.tr : 'none'.tr,
-                                        style: textMedium.copyWith(
-                                          color: hasPolyline
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontSize: Dimensions.fontSizeSmall,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Icon(
-                                        Icons.people,
-                                        color: Theme.of(context).primaryColor,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${passengers?.length ?? 0} ${'passengers'.tr}',
-                                        style: textMedium.copyWith(
-                                          color: Theme.of(context).primaryColor,
-                                          fontSize: Dimensions.fontSizeSmall,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: Theme.of(context).hintColor,
-                                        size: 14,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        ctrl.polylineSource,
-                                        style: textRegular.copyWith(
-                                          color: Theme.of(context).hintColor,
-                                          fontSize:
-                                              Dimensions.fontSizeExtraSmall,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
                           ],
                         ],
                       ),
@@ -574,175 +653,6 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
               ),
 
               // Passengers Panel
-              if (passengers != null && passengers.isNotEmpty)
-                Positioned(
-                  top: _passengersPanelPosition.dy,
-                  left: _passengersPanelPosition.dx,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _passengersPanelPosition = Offset(
-                          (_passengersPanelPosition.dx + details.delta.dx)
-                              .clamp(
-                            0,
-                            MediaQuery.of(context).size.width - 300,
-                          ),
-                          (_passengersPanelPosition.dy + details.delta.dy)
-                              .clamp(
-                            50,
-                            MediaQuery.of(context).size.height - 400,
-                          ),
-                        );
-                      });
-                    },
-                    onPanStart: (details) {
-                      // Add haptic feedback when starting to drag
-                      HapticFeedback.lightImpact();
-                    },
-                    child: Container(
-                      width: 300,
-                      constraints: const BoxConstraints(maxHeight: 400),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                            spreadRadius: 2,
-                          ),
-                          BoxShadow(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 0),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header
-                          Container(
-                            padding: const EdgeInsets.all(
-                                Dimensions.paddingSizeDefault),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withOpacity(0.1),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.people,
-                                  color: Theme.of(context).primaryColor,
-                                  size: 20,
-                                ),
-                                const SizedBox(
-                                    width: Dimensions.paddingSizeSmall),
-                                Expanded(
-                                  child: Text(
-                                    'passengers'.tr,
-                                    style: textBold.copyWith(
-                                      fontSize: Dimensions.fontSizeDefault,
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                    width: Dimensions.paddingSizeSmall),
-                                // Drag indicator
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _passengersPanelPosition =
-                                          const Offset(16, 100);
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.drag_handle,
-                                    color: Theme.of(context)
-                                        .primaryColor
-                                        .withOpacity(0.6),
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(
-                                    width: Dimensions.paddingSizeSmall),
-                                // Close button
-                                GestureDetector(
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    setState(() {
-                                      // Hide the panel by moving it off screen
-                                      _passengersPanelPosition = Offset(
-                                        MediaQuery.of(context).size.width + 100,
-                                        _passengersPanelPosition.dy,
-                                      );
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Icon(
-                                      Icons.close_rounded,
-                                      color: Colors.red,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                    width: Dimensions.paddingSizeSmall),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).primaryColor,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '${passengers.length}',
-                                    style: textMedium.copyWith(
-                                      color: Colors.white,
-                                      fontSize: Dimensions.fontSizeExtraSmall,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Passengers List
-                          Flexible(
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              padding: const EdgeInsets.all(
-                                  Dimensions.paddingSizeDefault),
-                              itemCount: passengers.length,
-                              itemBuilder: (context, index) {
-                                final passenger = passengers[index];
-                                return _buildPassengerCard(passenger);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
           );
         },
@@ -818,8 +728,51 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                       style: textMedium.copyWith(
                         fontSize: Dimensions.fontSizeDefault,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+
+                    // 🔥 OTP جنب الاسم مباشرة
+                    if (widget.trip.isTripStarted == 1 &&
+                        widget.trip.tripStatus == 'accepted')
+                      GetBuilder<SimpleTripOtpController>(
+                        builder: (controller) {
+                          return InkWell(
+                            onTap: () => _showOtpVerificationDialog(
+                                passenger, controller),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.verified_user,
+                                    size: 12,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'OTP',
+                                    style: textMedium.copyWith(
+                                      fontSize: 10,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Icon(
@@ -858,51 +811,45 @@ class _SimpleTripMapScreenState extends State<SimpleTripMapScreen>
                       borderRadius: BorderRadius.circular(10),
                       child: PassengerRouteInfoWidget(
                         passenger: passenger,
-                        tripStartAddress: widget.trip.startAddress,
-                        tripEndAddress: widget.trip.endAddress,
-                        compact: true,
+                        tripId: widget.trip.id.toString(),
                       ),
                     ),
                   ],
                 ),
               ),
+              // if (passenger.phone != null && passenger.phone!.isNotEmpty) ...[
+              //   IconButton(
+              //     onPressed: () async {
+              //       final Uri phoneUri = Uri(
+              //         scheme: 'tel',
+              //         path: passenger.phone!,
+              //       );
+
+              //       try {
+              //         await launchUrl(phoneUri);
+              //       } catch (e) {
+              //         _showSnackBar(
+              //           'Cannot make phone call',
+              //           Colors.red,
+              //           icon: Icons.error,
+              //         );
+              //       }
+              //     },
+              //     icon: Icon(
+              //       Icons.call,
+              //       color: Colors.green,
+              //       size: 22,
+              //     ),
+              //   ),
+              // ],
 
               /// OTP Button
-              GetBuilder<SimpleTripOtpController>(
-                  builder: (controller) {
-                    return ElevatedButton.icon(
-                      onPressed: () =>
-                          _showOtpVerificationDialog(passenger, controller),
-                      icon: const Icon(Icons.verified_user, size: 16),
-                      label: Text(
-                        'OTP',
-                        style: textMedium.copyWith(
-                          fontSize: Dimensions.fontSizeSmall,
-                        ),
-                      ),
-                    );
-                  }),
             ],
           ),
 
           const SizedBox(height: Dimensions.paddingSizeSmall),
 
           /// Status
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: passenger.statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: passenger.statusColor),
-            ),
-            child: Text(
-              passenger.statusDisplayText,
-              style: textRegular.copyWith(
-                fontSize: Dimensions.fontSizeExtraSmall,
-                color: passenger.statusColor,
-              ),
-            ),
-          ),
         ],
       ),
     );

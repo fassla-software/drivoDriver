@@ -194,6 +194,12 @@ class CarpoolMainMapController extends GetxController {
 
   void setMapController(GoogleMapController controller) {
     _mapController = controller;
+    // Fit all markers once the map is actually ready
+    if (_markers.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _fitMarkersOnMap();
+      });
+    }
   }
 
   void setSheetHeight(double height, bool notify) {
@@ -235,8 +241,14 @@ class CarpoolMainMapController extends GetxController {
       _isLoading = false;
       update();
 
-      // Fit markers on map
-      _fitMarkersOnMap();
+      // _fitMarkersOnMap() is primarily called from setMapController()
+      // when the GoogleMap widget fires onMapCreated. However, if onMapCreated
+      // already fired (race condition), fit markers now.
+      if (_mapController != null && _markers.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _fitMarkersOnMap();
+        });
+      }
     } catch (e) {
       print('=== Error initializing carpool main map: $e ===');
       _isLoading = false;
@@ -268,8 +280,7 @@ class CarpoolMainMapController extends GetxController {
 
       final pos = await Geolocator.getCurrentPosition();
       _currentPosition = pos;
-      print(
-          '=== Current position: ${pos.latitude}, ${pos.longitude} ===');
+      print('=== Current position: ${pos.latitude}, ${pos.longitude} ===');
     } catch (e) {
       print('=== Error getting current location: $e ===');
     }
@@ -296,8 +307,7 @@ class CarpoolMainMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId("car"),
-          position:
-              LatLng(currentPos.latitude, currentPos.longitude),
+          position: LatLng(currentPos.latitude, currentPos.longitude),
           rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,
@@ -348,8 +358,7 @@ class CarpoolMainMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId('end'),
-          position: LatLng(
-              endCoords[0], endCoords[1]),
+          position: LatLng(endCoords[0], endCoords[1]),
           infoWindow: InfoWindow(
             title: 'End',
             snippet: carpoolTrip.endAddress ?? 'Trip end location',
@@ -378,78 +387,131 @@ class CarpoolMainMapController extends GetxController {
   }
 
   Future<void> _addPassengerPickupMarkers() async {
-    print('=== Creating passenger pickup markers with avatars ===');
-    final addedPassengerIds = <String>{};
+    print('=== Creating passenger pickup & dropoff markers with avatars ===');
+    final addedPickupIds = <String>{};
+    final addedDropoffIds = <String>{};
 
+    // --- Passenger markers from passengerCoordinates ---
     final passengerCoords = carpoolTrip.passengerCoordinates;
     if (passengerCoords != null) {
       for (int i = 0; i < passengerCoords.length; i++) {
         final passengerCoord = passengerCoords[i];
-        if (!passengerCoord.isPickup || !passengerCoord.hasValidCoordinates) {
-          continue;
-        }
+
+        if (!passengerCoord.hasValidCoordinates) continue;
 
         final coords = passengerCoord.coordinates;
         if (coords == null || coords.length < 2) continue;
 
+        final latLng = LatLng(coords[0], coords[1]);
         final passengerId = passengerCoord.passengerId ?? 'idx_$i';
-        if (addedPassengerIds.contains(passengerId)) continue;
-
         final passenger = _findPassenger(passengerCoord.passengerId);
-        final passengerInfo = passenger != null
-            ? '${passenger.name ?? 'Unknown'} (${passenger.seatsCount ?? 1} seats)'
-            : 'Unknown Passenger';
-        final icon = passenger != null
-            ? await PassengerMapMarkerHelper.fromPassenger(passenger)
-            : await PassengerMapMarkerHelper.placeholder();
+        final passengerName = passenger?.name ?? 'Unknown';
+        final passengerInfo =
+            '$passengerName (${passenger?.seatsCount ?? 1} seats)';
 
-        _markers.add(
-          Marker(
-            markerId: MarkerId('passenger_pickup_$passengerId'),
-            position: LatLng(coords[0], coords[1]),
-            anchor: const Offset(0.5, 0.5),
-            infoWindow: InfoWindow(
-              title: 'Pickup - $passengerInfo',
-              snippet:
-                  '${passengerCoord.address ?? passenger?.pickupAddress ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerId)}',
+        if (passengerCoord.isPickup) {
+          if (addedPickupIds.contains(passengerId)) continue;
+
+          final icon = passenger != null
+              ? await PassengerMapMarkerHelper.fromPassenger(passenger)
+              : await PassengerMapMarkerHelper.placeholder();
+
+          _markers.add(
+            Marker(
+              markerId: MarkerId('passenger_pickup_$passengerId'),
+              position: latLng,
+              anchor: const Offset(0.5, 0.5),
+              infoWindow: InfoWindow(
+                title: 'Pickup - $passengerInfo',
+                snippet:
+                    '${passengerCoord.address ?? passenger?.pickupAddress ?? 'Passenger pickup location'}\nStatus: ${_getPassengerStatus(passengerId)}',
+              ),
+              icon: icon,
             ),
-            icon: icon,
-          ),
-        );
-        addedPassengerIds.add(passengerId);
+          );
+          addedPickupIds.add(passengerId);
+        } else if (passengerCoord.isDropoff) {
+          if (addedDropoffIds.contains(passengerId)) continue;
+
+          final icon = passenger != null
+              ? await PassengerMapMarkerHelper.fromPassenger(passenger)
+              : await PassengerMapMarkerHelper.placeholder();
+
+          _markers.add(
+            Marker(
+              markerId: MarkerId('passenger_dropoff_$passengerId'),
+              position: latLng,
+              infoWindow: InfoWindow(
+                title: 'Dropoff - $passengerInfo',
+                snippet:
+                    '${passengerCoord.address ?? passenger?.dropoffAddress ?? 'Passenger dropoff location'}\nStatus: ${_getPassengerStatus(passengerId)}',
+              ),
+              icon: icon,
+            ),
+          );
+          addedDropoffIds.add(passengerId);
+        }
       }
     }
 
+    // --- Fallback: markers from passengers list ---
     final passengers = carpoolTrip.passengers;
     if (passengers != null) {
       for (final passenger in passengers) {
         final passengerId =
             passenger.carpoolTripId ?? passenger.id?.toString() ?? '';
-        if (passengerId.isEmpty || addedPassengerIds.contains(passengerId)) {
-          continue;
+        if (passengerId.isEmpty) continue;
+
+        // Pickup marker fallback
+        if (!addedPickupIds.contains(passengerId)) {
+          final coords =
+              passenger.closestPickupPoint ?? passenger.pickupCoordinates;
+          if (coords != null && coords.length >= 2) {
+            final icon =
+                await PassengerMapMarkerHelper.fromPassenger(passenger);
+            _markers.add(
+              Marker(
+                markerId: MarkerId('passenger_pickup_$passengerId'),
+                position: LatLng(coords[0], coords[1]),
+                anchor: const Offset(0.5, 0.5),
+                infoWindow: InfoWindow(
+                  title: 'Pickup - ${passenger.name ?? 'Unknown'}',
+                  snippet:
+                      passenger.displayPickupAddress(carpoolTrip.startAddress),
+                ),
+                icon: icon,
+              ),
+            );
+            addedPickupIds.add(passengerId);
+          }
         }
 
-        final coords =
-            passenger.closestPickupPoint ?? passenger.pickupCoordinates;
-        if (coords == null || coords.length < 2) continue;
-
-        final icon = await PassengerMapMarkerHelper.fromPassenger(passenger);
-        _markers.add(
-          Marker(
-            markerId: MarkerId('passenger_pickup_$passengerId'),
-            position: LatLng(coords[0], coords[1]),
-            anchor: const Offset(0.5, 0.5),
-            infoWindow: InfoWindow(
-              title: 'Pickup - ${passenger.name ?? 'Unknown'}',
-              snippet:
-                  passenger.displayPickupAddress(carpoolTrip.startAddress),
-            ),
-            icon: icon,
-          ),
-        );
-        addedPassengerIds.add(passengerId);
+        // Dropoff marker fallback
+        if (!addedDropoffIds.contains(passengerId)) {
+          final dropCoords = passenger.dropoffCoordinates;
+          if (dropCoords != null && dropCoords.length >= 2) {
+            final icon =
+                await PassengerMapMarkerHelper.fromPassenger(passenger);
+            _markers.add(
+              Marker(
+                markerId: MarkerId('passenger_dropoff_$passengerId'),
+                position: LatLng(dropCoords[0], dropCoords[1]),
+                infoWindow: InfoWindow(
+                  title: 'Dropoff - ${passenger.name ?? 'Unknown'}',
+                  snippet:
+                      passenger.displayDropoffAddress(carpoolTrip.endAddress),
+                ),
+                icon: icon,
+              ),
+            );
+            addedDropoffIds.add(passengerId);
+          }
+        }
       }
     }
+
+    print(
+        '=== Total passenger markers (pickups: ${addedPickupIds.length}, dropoffs: ${addedDropoffIds.length}) ===');
   }
 
   void _createPolylines() {
@@ -551,8 +613,7 @@ class CarpoolMainMapController extends GetxController {
       // Use encoded polyline from the server (static route for carpool trips)
       if (polyline != null && polyline.isNotEmpty) {
         print('=== Using encoded polyline from server ===');
-        print(
-            '=== Encoded polyline length: ${polyline.length} characters ===');
+        print('=== Encoded polyline length: ${polyline.length} characters ===');
         _mainRoutePoints = decodePolyline(polyline);
         _polylineCoordinateList =
             List.from(_mainRoutePoints); // Copy for car tracking
@@ -717,7 +778,7 @@ class CarpoolMainMapController extends GetxController {
       final endLng = endCoords[1];
 
       final url =
-          'https://www.google.com/maps/dir/?api=1&origin=$startLat,$startLng&destination=$endLat,$endLng&travelmode=driving';
+          'https://www.google.com/maps/dir/?api=1&origin=$startLng,$startLat&destination=$endLng,$endLat&travelmode=driving';
 
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
@@ -825,8 +886,7 @@ class CarpoolMainMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId("car"),
-          position:
-              LatLng(currentPos.latitude, currentPos.longitude),
+          position: LatLng(currentPos.latitude, currentPos.longitude),
           rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,
@@ -885,8 +945,7 @@ class CarpoolMainMapController extends GetxController {
       _markers.add(
         Marker(
           markerId: const MarkerId("car"),
-          position:
-              LatLng(currentPos.latitude, currentPos.longitude),
+          position: LatLng(currentPos.latitude, currentPos.longitude),
           rotation: currentPos.heading,
           draggable: false,
           zIndex: 2,

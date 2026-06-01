@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class SimplePassengerModel {
-  int? id;
+  String? id;
   String? name;
   String? profileImage;
   int? seatsCount;
@@ -39,30 +39,27 @@ class SimplePassengerModel {
 
   factory SimplePassengerModel.fromJson(Map<String, dynamic> json) {
     print('=== SimplePassengerModel.fromJson: $json ===');
+    
     return SimplePassengerModel(
-      id: json['id'],
-      price: json['price']?.toDouble(),
-      name: json['name'],
-      profileImage: json['profile_image'],
-      seatsCount: json['seats_count'],
-      fare: json['fare']?.toDouble(),
-      status: json['status'],
-      pickupAddress: json['pickup_address']?.toString() ??
-          json['start_address']?.toString(),
-      dropoffAddress: json['dropoff_address']?.toString() ??
-          json['end_address']?.toString(),
-      pickupCoordinates: json['pickup_coordinates'] != null
-          ? List<double>.from(json['pickup_coordinates'])
-          : null,
-      closestPickupPoint: json['closest_pickup_point'] != null
-          ? List<double>.from(json['closest_pickup_point'])
-          : null,
-      dropoffCoordinates: json['dropoff_coordinates'] != null
-          ? List<double>.from(json['dropoff_coordinates'])
-          : null,
+      id: json['user_id']?.toString(),
+      name: json['name']?.toString(),
+      profileImage: json['profile_image']?.toString(),
+      seatsCount: json['seats_count'] is int 
+          ? json['seats_count'] 
+          : int.tryParse(json['seats_count']?.toString() ?? ''),
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
+      fare: json['fare'] != null ? double.tryParse(json['fare'].toString()) : null,
+      status: json['status']?.toString(),
+      pickupAddress: json['pickup_address']?.toString() ?? json['start_address']?.toString(),
+      dropoffAddress: json['dropoff_address']?.toString() ?? json['end_address']?.toString(),
       phone: json['phone']?.toString(),
       email: json['email']?.toString(),
-      carpoolTripId: json['carpool_trip_id']?.toString(),
+      carpoolTripId: json['carpool_trip_id']?.toString() ?? json['passenger_id']?.toString(),
+      
+      // معالجة ذكية للإحداثيات تدعم الـ Map والـ List معاً منعاً للـ Crash
+      pickupCoordinates: _parseCoordinates(json['pickup_coordinates'] ?? json['start_coordinates']),
+      dropoffCoordinates: _parseCoordinates(json['dropoff_coordinates'] ?? json['end_coordinates']),
+      closestPickupPoint: _parseCoordinates(json['closest_pickup_point']),
     );
   }
 
@@ -84,15 +81,35 @@ class SimplePassengerModel {
       'carpool_trip_id': carpoolTripId,
     };
   }
-String? get fullProfileImage {
-  final img = profileImage;
 
-  if (img == null || img.trim().isEmpty) return null;
+  /// دالة مساعدة خاصة للتعامل الآمن مع الإحداثيات وتجنب الـ Type Cast Error
+  static List<double>? _parseCoordinates(dynamic jsonElement) {
+    if (jsonElement == null) return null;
+    try {
+      // 1. إذا كانت قادمة كلستة مباشرة [lat, lng]
+      if (jsonElement is List) {
+        return jsonElement.map((e) => double.parse(e.toString())).toList();
+      }
+      // 2. إذا كانت قادمة كماب تحتوي على مفاتيح جغرافية {"lat": ..., "lng": ...}
+      if (jsonElement is Map) {
+        final lat = jsonElement['lat'] ?? jsonElement['latitude'];
+        final lng = jsonElement['lng'] ?? jsonElement['longitude'];
+        if (lat != null && lng != null) {
+          return [double.parse(lat.toString()), double.parse(lng.toString())];
+        }
+      }
+    } catch (e) {
+      print('❌ Error parsing coordinates in SimplePassengerModel: $e');
+    }
+    return null;
+  }
 
-  if (img.startsWith('http')) return img;
-
-  return 'https://drivoeg.com/storage/app/public/customer/profile/$img';
-}
+  String? get fullProfileImage {
+    final img = profileImage;
+    if (img == null || img.trim().isEmpty) return null;
+    if (img.startsWith('http')) return img;
+    return 'https://drivoeg.com/storage/app/public/customer/profile/$img';
+  }
 
   String? _firstNonEmpty(Iterable<String?> values) {
     for (final value in values) {
@@ -102,23 +119,18 @@ String? get fullProfileImage {
     return null;
   }
 
-  /// Pickup text for UI — passenger address, then trip start, then placeholder.
   String displayPickupAddress(String? tripStartAddress) {
-    return _firstNonEmpty([pickupAddress, tripStartAddress]) ??
-        'location_not_available'.tr;
+    return _firstNonEmpty([pickupAddress, tripStartAddress]) ?? 'location_not_available'.tr;
   }
 
-  /// Dropoff text for UI — passenger address, then trip end, then placeholder.
   String displayDropoffAddress(String? tripEndAddress) {
-    return _firstNonEmpty([dropoffAddress, tripEndAddress]) ??
-        'location_not_available'.tr;
+    return _firstNonEmpty([dropoffAddress, tripEndAddress]) ?? 'location_not_available'.tr;
   }
 
-  // Helper methods
-String get formattedFare {
-  final value = fare ?? price ?? 0;
-  return '${value.toStringAsFixed(2)} EGP';
-}
+  String get formattedFare {
+    final value = fare ?? price ?? 0;
+    return '${value.toStringAsFixed(2)} EGP';
+  }
 
   String get statusDisplayText {
     switch (status?.toLowerCase()) {
@@ -127,8 +139,10 @@ String get formattedFare {
       case 'accepted':
         return 'accepted'.tr;
       case 'picked_up':
+      case 'ongoing': // إضافة حالة التشغيل المستمرة القادمة من الـ API لرحلة 488
         return 'picked_up'.tr;
       case 'dropped_off':
+      case 'completed':
         return 'dropped_off'.tr;
       case 'cancelled':
         return 'cancelled'.tr;
@@ -144,8 +158,10 @@ String get formattedFare {
       case 'accepted':
         return Colors.green;
       case 'picked_up':
+      case 'ongoing':
         return Colors.blue;
       case 'dropped_off':
+      case 'completed':
         return Colors.purple;
       case 'cancelled':
         return Colors.red;

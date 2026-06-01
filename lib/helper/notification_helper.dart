@@ -35,7 +35,8 @@ import 'package:ride_sharing_user_app/features/ride/controllers/ride_controller.
 import 'package:ride_sharing_user_app/features/splash/controllers/splash_controller.dart';
 import 'package:ride_sharing_user_app/features/trip/screens/payment_received_screen.dart';
 import 'package:ride_sharing_user_app/features/trip/screens/review_this_customer_screen.dart';
-
+import 'package:ride_sharing_user_app/features/car_polling/controllers/simple_trips_controller.dart';
+import 'package:ride_sharing_user_app/features/car_polling/screens/simple_trips_screen.dart';
 class NotificationHelper {
   static Future<void> initialize(
       FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin) async {
@@ -240,6 +241,10 @@ class NotificationHelper {
           } else if (message.data['action'] == 'admin_message') {
             Get.find<HelpAndSupportController>()
                 .getConversation(message.data['type'], 1);
+          } else if (message.data['action'] == 'carpool_driver_trip_joined') {
+            if (Get.isRegistered<SimpleTripsController>()) {
+              Get.find<SimpleTripsController>().getCurrentTrips(isRefresh: true);
+            }
           }
 
           ///If web socket Not connected
@@ -305,6 +310,10 @@ class NotificationHelper {
           } else if (message.data['action'] == 'admin_message') {
             Get.find<HelpAndSupportController>()
                 .getConversation(message.data['type'], 1);
+          } else if (message.data['action'] == 'carpool_driver_trip_joined') {
+            if (Get.isRegistered<SimpleTripsController>()) {
+              Get.find<SimpleTripsController>().getCurrentTrips(isRefresh: true);
+            }
           }
         }
 
@@ -549,6 +558,11 @@ class NotificationHelper {
       Get.find<WalletController>().setSelectedHistoryIndex(1, true);
     } else if (data['action'] == "bid_rejected") {
       Get.offAll(() => const DashboardScreen());
+    } else if (data['action'] == "carpool_driver_trip_joined") {
+      if (Get.isRegistered<SimpleTripsController>()) {
+        Get.find<SimpleTripsController>().getCurrentTrips(isRefresh: true);
+      }
+      _toRoute(formSplash, const SimpleTripsScreen());
     } else if (data['action'] == "review_submit") {
       _toRoute(formSplash, const ReviewScreen());
     } else if (data['action'] == 'identity_image_approved' ||

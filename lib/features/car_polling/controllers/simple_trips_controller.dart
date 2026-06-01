@@ -142,6 +142,7 @@ class SimpleTripsController extends GetxController implements GetxService {
   Color getTripStatusColor(String status) {
     switch (status) {
       case 'pending':
+      case 'return_pending':
         return Colors.orange;
       case 'ongoing':
         return Colors.green;
@@ -159,6 +160,10 @@ class SimpleTripsController extends GetxController implements GetxService {
     switch (status) {
       case 'pending':
         return 'pending'.tr;
+      case 'return_pending':
+        return 'return_pending'.tr == 'return_pending'
+            ? 'Return Pending'
+            : 'return_pending'.tr;
       case 'ongoing':
         return 'ongoing'.tr;
       case 'completed':
