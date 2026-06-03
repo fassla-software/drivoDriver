@@ -18,6 +18,7 @@ class SimplePassengerModel {
   String? phone;
   String? email;
   String? carpoolTripId;
+  bool? isOtpNotVerified;
 
   SimplePassengerModel({
     this.id,
@@ -32,6 +33,7 @@ class SimplePassengerModel {
     this.dropoffAddress,
     this.pickupCoordinates,
     this.dropoffCoordinates,
+    this.isOtpNotVerified,
     this.phone,
     this.email,
     this.carpoolTripId,
@@ -39,26 +41,38 @@ class SimplePassengerModel {
 
   factory SimplePassengerModel.fromJson(Map<String, dynamic> json) {
     print('=== SimplePassengerModel.fromJson: $json ===');
-    
+
     return SimplePassengerModel(
       id: json['user_id']?.toString(),
+      isOtpNotVerified: json['is_otp_not_verified'] == 1 ||
+          json['is_otp_not_verified'] == true ||
+          json['is_otp_not_verified'] == null,
       name: json['name']?.toString(),
       profileImage: json['profile_image']?.toString(),
-      seatsCount: json['seats_count'] is int 
-          ? json['seats_count'] 
+      seatsCount: json['seats_count'] is int
+          ? json['seats_count']
           : int.tryParse(json['seats_count']?.toString() ?? ''),
-      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
-      fare: json['fare'] != null ? double.tryParse(json['fare'].toString()) : null,
+      price: json['price'] != null
+          ? double.tryParse(json['price'].toString())
+          : null,
+      fare: json['fare'] != null
+          ? double.tryParse(json['fare'].toString())
+          : null,
       status: json['status']?.toString(),
-      pickupAddress: json['pickup_address']?.toString() ?? json['start_address']?.toString(),
-      dropoffAddress: json['dropoff_address']?.toString() ?? json['end_address']?.toString(),
+      pickupAddress: json['pickup_address']?.toString() ??
+          json['start_address']?.toString(),
+      dropoffAddress: json['dropoff_address']?.toString() ??
+          json['end_address']?.toString(),
       phone: json['phone']?.toString(),
       email: json['email']?.toString(),
-      carpoolTripId: json['carpool_trip_id']?.toString() ?? json['passenger_id']?.toString(),
-      
+      carpoolTripId: json['carpool_trip_id']?.toString() ??
+          json['passenger_id']?.toString(),
+
       // معالجة ذكية للإحداثيات تدعم الـ Map والـ List معاً منعاً للـ Crash
-      pickupCoordinates: _parseCoordinates(json['pickup_coordinates'] ?? json['start_coordinates']),
-      dropoffCoordinates: _parseCoordinates(json['dropoff_coordinates'] ?? json['end_coordinates']),
+      pickupCoordinates: _parseCoordinates(
+          json['pickup_coordinates'] ?? json['start_coordinates']),
+      dropoffCoordinates: _parseCoordinates(
+          json['dropoff_coordinates'] ?? json['end_coordinates']),
       closestPickupPoint: _parseCoordinates(json['closest_pickup_point']),
     );
   }
@@ -120,11 +134,13 @@ class SimplePassengerModel {
   }
 
   String displayPickupAddress(String? tripStartAddress) {
-    return _firstNonEmpty([pickupAddress, tripStartAddress]) ?? 'location_not_available'.tr;
+    return _firstNonEmpty([pickupAddress, tripStartAddress]) ??
+        'location_not_available'.tr;
   }
 
   String displayDropoffAddress(String? tripEndAddress) {
-    return _firstNonEmpty([dropoffAddress, tripEndAddress]) ?? 'location_not_available'.tr;
+    return _firstNonEmpty([dropoffAddress, tripEndAddress]) ??
+        'location_not_available'.tr;
   }
 
   String get formattedFare {

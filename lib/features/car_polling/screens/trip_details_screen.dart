@@ -186,9 +186,9 @@ class TripDetailsScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: Dimensions.paddingSizeLarge),
-              if (currentTrip.tripStatus == 'ongoing') ...[
-                _buildActionButtons(context, controller, currentTrip),
-              ],
+              // if (currentTrip.tripStatus == 'ongoing') ...[
+              _buildActionButtons(context, controller, currentTrip),
+              // ],
             ],
           ),
         );
@@ -922,6 +922,67 @@ class TripDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              // Clickable Pickup Address
+              InkWell(
+                onTap: () {
+                  final pickupCoords = passenger.closestPickupPoint ??
+                      passenger.pickupCoordinates;
+                  if (pickupCoords != null && pickupCoords.length >= 2) {
+                    _openMap(pickupCoords[0], pickupCoords[1]);
+                  } else {
+                    Get.snackbar('Error', 'location_not_available'.tr,
+                        backgroundColor: Colors.red, colorText: Colors.white);
+                  }
+                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.trip_origin_rounded,
+                        color: Color(0xFF2E7D32), size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${'pickup_location'.tr}: ${passenger.displayPickupAddress(trip.startAddress)}',
+                        style: textRegular.copyWith(
+                            fontSize: 12,
+                            color: _inkBlack.withValues(alpha: 0.7)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Clickable Dropoff Address
+              InkWell(
+                onTap: () {
+                  final dropoffCoords = passenger.dropoffCoordinates;
+                  if (dropoffCoords != null && dropoffCoords.length >= 2) {
+                    _openMap(dropoffCoords[0], dropoffCoords[1]);
+                  } else {
+                    Get.snackbar('Error', 'location_not_available'.tr,
+                        backgroundColor: Colors.red, colorText: Colors.white);
+                  }
+                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.flag_rounded,
+                        color: Color(0xFFC62828), size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${'dropoff_location'.tr}: ${passenger.displayDropoffAddress(trip.endAddress)}',
+                        style: textRegular.copyWith(
+                            fontSize: 12,
+                            color: _inkBlack.withValues(alpha: 0.7)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (trip.carpoolType?.toLowerCase() != 'travel') ...[
                 const SizedBox(height: 8),

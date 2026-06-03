@@ -8,11 +8,13 @@ class PassengerCoordinateModel {
   List<double>? dropoffCoordinates;
   String? address;
 
+  bool? isOtpNotVerified = true;
   PassengerCoordinateModel({
     this.type,
     this.passengerId,
     this.pickupCoordinates,
     this.dropoffCoordinates,
+    this.isOtpNotVerified,
     this.address,
     this.closestCoordinates,
   });
@@ -35,6 +37,9 @@ class PassengerCoordinateModel {
           ? List<double>.from(json['dropoff_coordinates'])
           : null,
       address: json['address'],
+      isOtpNotVerified: json['is_otp_not_verified'] == 1 ||
+          json['is_otp_not_verified'] == true ||
+          json['is_otp_not_verified'] == null,
     );
 
     if (kDebugMode) {

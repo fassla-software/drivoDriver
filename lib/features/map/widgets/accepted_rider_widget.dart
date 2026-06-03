@@ -253,25 +253,25 @@ class _RideAcceptedWidgetState extends State<RideAcceptedWidget> {
                               ]),
                         ),
                       ),
-                      if (rideController.tripDetail?.type == 'parcel')
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: Dimensions.paddingSizeLarge,
-                            right: Dimensions.paddingSizeLarge,
-                            bottom: Dimensions.paddingSizeDefault,
-                          ),
-                          child: ButtonWidget(
-                            fontSize: Dimensions.fontSizeSmall,
-                            buttonText: 'track_now'.tr,
-                            width: Get.width,
-                            height: 36,
-                            onPressed: () => launchUrl(
-                              Uri.parse(_getParcelTrackUrl(
-                                  rideController.tripDetail!.refId)),
-                              mode: LaunchMode.externalApplication,
-                            ),
-                          ),
-                        ),
+                      // if (rideController.tripDetail?.type == 'parcel')
+                      //   Padding(
+                      //     padding: const EdgeInsets.only(
+                      //       left: Dimensions.paddingSizeLarge,
+                      //       right: Dimensions.paddingSizeLarge,
+                      //       bottom: Dimensions.paddingSizeDefault,
+                      //     ),
+                      //     child: ButtonWidget(
+                      //       fontSize: Dimensions.fontSizeSmall,
+                      //       buttonText: 'track_now'.tr,
+                      //       width: Get.width,
+                      //       height: 36,
+                      //       onPressed: () => launchUrl(
+                      //         Uri.parse(_getParcelTrackUrl(
+                      //             rideController.tripDetail!.refId)),
+                      //         mode: LaunchMode.externalApplication,
+                      //       ),
+                      //     ),
+                      //   ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: Dimensions.paddingSizeDefault),

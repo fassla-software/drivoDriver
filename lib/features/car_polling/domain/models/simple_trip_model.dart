@@ -65,6 +65,8 @@ class SimpleTripModel {
   List<PassengerCoordinateModel>? passengerCoordinates;
   List<SimplePassengerModel>? passengers;
 
+  // bool? isOtpNotVerified = true;
+
   SimpleTripModel({
     this.id,
     this.name,
@@ -74,6 +76,7 @@ class SimpleTripModel {
     this.isAc,
     this.allowedGender,
     this.allowedAgeMin,
+    // this.isOtpNotVerified,
     this.allowedAgeMax,
     this.hasScreenEntertainment,
     this.hasMusic,
@@ -114,7 +117,9 @@ class SimpleTripModel {
       id: json['id'],
       name: json['name']?.toString(),
       profileImage: json['profile_image']?.toString(),
-
+      // isOtpNotVerified: json['is_otp_not_verified'] == 1 ||
+      //     json['is_otp_not_verified'] == true ||
+      //     json['is_otp_not_verified'] == null,
       seats: json['seats'],
       isSmokingAllowed: json['is_smoking_allowed'],
       isAc: json['is_ac'],
